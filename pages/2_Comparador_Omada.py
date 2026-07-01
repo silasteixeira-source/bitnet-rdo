@@ -7,26 +7,58 @@ st.set_page_config(page_title="Comparador OMADA", page_icon="🔄", layout="wide
 st.title("🔄 Comparador de Status OMADA")
 st.markdown("Faça o upload de duas planilhas do Omada (uma antiga/base e uma nova) para comparar a evolução do status das controladoras.")
 
+st.info("⚠️ **Importante:** Por padrão, o sistema espera as planilhas no estado **BRUTO**, da exata forma como foram exportadas. Caso você tenha alterado as colunas, utilize as configurações avançadas abaixo para informar os novos nomes.")
+
 col1, col2 = st.columns(2)
 with col1:
-    st.info("🕒 Arquivo Antigo (Base)")
+    st.markdown("### 🕒 Arquivo Antigo (Base)")
     old_file = st.file_uploader("Upload da Planilha Omada Antiga", type=["xlsx", "xls"], key="old")
 
 with col2:
-    st.success("🆕 Arquivo Novo (Atual)")
+    st.markdown("### 🆕 Arquivo Novo (Atual)")
     new_file = st.file_uploader("Upload da Planilha Omada Nova", type=["xlsx", "xls"], key="new")
 
-def get_offline_controllers(df):
+st.divider()
+
+# Configurações Avançadas
+with st.expander("⚙️ Configurações Avançadas de Colunas (Opcional)"):
+    st.markdown("Se a planilha não for a original bruta, informe os nomes das colunas:")
+    modo_config = st.radio("Método de busca:", ["Usar padrão (Automático)", "Digitar manualmente o nome das colunas"])
+    
+    custom_name_col = ""
+    custom_status_col = ""
+    
+    if modo_config == "Digitar manualmente o nome das colunas":
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            custom_name_col = st.text_input("Nome da coluna com o NOME/INEP da controladora:", value="NAME")
+        with col_c2:
+            custom_status_col = st.text_input("Nome da coluna com o STATUS:", value="STATUS")
+
+def get_offline_controllers(df, force_name_col="", force_status_col=""):
     """Retorna um DataFrame apenas com as controladoras offline e identifica as colunas chave."""
-    col_name = 'NAME' if 'NAME' in df.columns else df.columns[0]
+    # Definição da coluna de NOME
+    if force_name_col:
+        if force_name_col not in df.columns:
+            raise ValueError(f"A coluna de nome especificada '{force_name_col}' não existe na planilha.")
+        col_name = force_name_col
+    else:
+        col_name = 'NAME' if 'NAME' in df.columns else df.columns[0]
+    
+    # Definição da coluna de STATUS
     col_status = None
-    for col in df.columns:
-        if 'status' in str(col).lower():
-            col_status = col
-            break
+    if force_status_col:
+        if force_status_col not in df.columns:
+            raise ValueError(f"A coluna de status especificada '{force_status_col}' não existe na planilha.")
+        col_status = force_status_col
+    else:
+        for col in df.columns:
+            if 'status' in str(col).lower():
+                col_status = col
+                break
             
     if col_status is None:
-        raise ValueError("A coluna 'STATUS' não foi encontrada na planilha.")
+        raise ValueError("A coluna de 'STATUS' não foi encontrada. Verifique se a planilha está no formato correto ou use as configurações avançadas.")
         
     cond_status = df[col_status].astype(str).str.upper().str.contains('OFFLINE')
     df_offline = df[cond_status].copy()
@@ -44,8 +76,12 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                 df_old = pd.read_excel(old_file)
                 df_new = pd.read_excel(new_file)
                 
-                df_offline_old, name_col_old, status_col_old = get_offline_controllers(df_old)
-                df_offline_new, name_col_new, status_col_new = get_offline_controllers(df_new)
+                # Se o usuário escolheu customizado, passa os nomes, senão passa string vazia
+                f_name = custom_name_col if modo_config == "Digitar manualmente o nome das colunas" else ""
+                f_status = custom_status_col if modo_config == "Digitar manualmente o nome das colunas" else ""
+                
+                df_offline_old, name_col_old, status_col_old = get_offline_controllers(df_old, f_name, f_status)
+                df_offline_new, name_col_new, status_col_new = get_offline_controllers(df_new, f_name, f_status)
                 
                 # Pegar apenas os nomes das controladoras offline
                 set_old = set(df_offline_old[name_col_old].astype(str).str.strip())
