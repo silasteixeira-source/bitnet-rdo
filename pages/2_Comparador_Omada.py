@@ -100,6 +100,23 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                 df_ainda = df_new[df_new['NOME_CLEAN'].isin(ainda_offline_names)].drop(columns=['NOME_CLEAN'])
                 df_recuperadas = df_old[df_old['NOME_CLEAN'].isin(recuperadas_names)].drop(columns=['NOME_CLEAN'])
                 
+                # Função interna para ordenar pela data de Last Uptime (do mais recente para o mais antigo)
+                def sort_by_uptime(df, status_col):
+                    if df.empty or status_col not in df.columns:
+                        return df
+                    # Extrai a string de data que vem depois de "Uptime:"
+                    temp_dates = df[status_col].astype(str).str.extract(r'(?i)Uptime:\s*(.*)')[0]
+                    # Converte para datetime e cria coluna temporária para ordenação
+                    df['_temp_date'] = pd.to_datetime(temp_dates, errors='coerce')
+                    # Ordena: ascending=False deixa as datas mais recentes (maiores) no topo
+                    df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
+                    return df
+
+                # Aplicando a ordenação nas planilhas de resultado
+                df_novas = sort_by_uptime(df_novas, status_col_new)
+                df_ainda = sort_by_uptime(df_ainda, status_col_new)
+                df_recuperadas = sort_by_uptime(df_recuperadas, status_col_old)
+
                 st.divider()
                 st.subheader("📊 Resultados da Comparação")
                 
@@ -116,17 +133,17 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                     
                 with tab1:
                     st.markdown("### Controladoras que caíram")
-                    st.write("Estavam online na planilha antiga, mas ficaram **OFFLINE** na planilha nova.")
+                    st.write("Estavam online na planilha antiga, mas ficaram **OFFLINE** na planilha nova. *(Ordenadas da queda mais recente para a mais antiga)*")
                     st.dataframe(df_novas[colunas_exibir_novas] if not df_novas.empty else df_novas, use_container_width=True)
                 
                 with tab2:
                     st.markdown("### Controladoras sem solução")
-                    st.write("Já estavam offline na planilha antiga e **CONTINUAM OFFLINE** na planilha nova.")
+                    st.write("Já estavam offline na planilha antiga e **CONTINUAM OFFLINE** na planilha nova. *(Ordenadas da queda mais recente para a mais antiga)*")
                     st.dataframe(df_ainda[colunas_exibir_novas] if not df_ainda.empty else df_ainda, use_container_width=True)
                     
                 with tab3:
                     st.markdown("### Controladoras que voltaram (Bônus!)")
-                    st.write("Estavam offline na planilha antiga, mas agora estão **ONLINE** na planilha nova.")
+                    st.write("Estavam offline na planilha antiga, mas agora estão **ONLINE** na planilha nova. *(Ordenadas por data original do status offline)*")
                     # Para as recuperadas, usamos as colunas do df_old
                     colunas_exibir_old = [name_col_old, status_col_old]
                     if 'MODEL' in df_old.columns: colunas_exibir_old.append('MODEL')
