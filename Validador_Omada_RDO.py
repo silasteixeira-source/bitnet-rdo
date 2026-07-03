@@ -16,5 +16,6 @@ st.markdown(
 
     - **1. Validador Omada:** Faz o cruzamento de dados e valida se as controladoras que deveriam estar online (segundo o RDO) não estão indevidamente offline no Omada.
     - **2. Comparador Omada:** Compara a evolução de status entre duas planilhas diferentes do Omada para mostrar quem caiu e quem voltou.
+    - **3. Verificador de Chamados:** Cruza o relatório de Offline com o Controle de OS para saber onde já existe chamado aberto e onde falta atuar.
     """
 )
