@@ -5,39 +5,64 @@ import io
 st.set_page_config(page_title="Verificador de Chamados", page_icon="🎫", layout="wide")
 
 st.title("🎫 Verificador de Chamados Abertos (OS)")
-st.markdown("Faça o upload da planilha **Controle de OS** e do relatório de **Controladoras Offline** (gerado pelo Comparador) para descobrir quais locais já possuem chamado e em quais ainda é necessário atuar.")
+st.markdown("Faça o upload do **Controle de OS**, do relatório gerado pelo **Comparador** e do **RDO** para descobrir quais locais válidos já possuem chamado e onde é necessário atuar.")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
-    st.info("📊 Arquivo de Controle de OS")
-    os_file = st.file_uploader("Upload da Planilha Controle_OS", type=["xlsx", "xls"], key="os")
+    st.info("📊 Arquivo Controle de OS")
+    os_file = st.file_uploader("Upload da Planilha OS", type=["xlsx", "xls"], key="os")
 
 with col2:
-    st.error("🔴 Relatório de Offline (Comparativo)")
-    offline_file = st.file_uploader("Upload da Planilha do Comparador (Omada)", type=["xlsx", "xls"], key="offline")
+    st.error("🔴 Relatório do Comparador")
+    offline_file = st.file_uploader("Upload do Comparativo_Evolução", type=["xlsx", "xls"], key="offline")
+
+with col3:
+    st.success("📁 Arquivo RDO Oficial")
+    rdo_file = st.file_uploader("Upload da Planilha RDO", type=["xlsx", "xls"], key="rdo")
+
+st.divider()
+
+with st.expander("⚙️ Configuração RDO (Como ler o INEP?)", expanded=False):
+    modo_coluna_inep = st.radio(
+        "Identificar coluna no RDO:", 
+        ["Pela posição (Coluna M)", "Pelo nome da coluna"]
+    )
+    nome_col_inep = ""
+    if modo_coluna_inep == "Pelo nome da coluna":
+        nome_col_inep = st.text_input("Digite o nome da coluna:", value="INEP")
 
 if st.button("🔍 Cruzar Dados", type="primary", use_container_width=True):
-    if not os_file or not offline_file:
-        st.warning("⚠️ Por favor, faça o upload das duas planilhas antes de analisar.")
+    if not os_file or not offline_file or not rdo_file:
+        st.warning("⚠️ Por favor, faça o upload das TRÊS planilhas antes de analisar.")
     else:
         try:
-            with st.spinner("Analisando chamados..."):
-                # 1. Carregar OS
-                df_os = pd.read_excel(os_file)
+            with st.spinner("Analisando chamados cruzados com o RDO..."):
+                # 1. Carregar RDO
+                df_rdo = pd.read_excel(rdo_file)
+                if modo_coluna_inep == "Pela posição (Coluna M)":
+                    if df_rdo.shape[1] > 12:
+                        serie_inep = df_rdo.iloc[:, 12]
+                    else:
+                        st.error("A planilha RDO não possui a coluna M.")
+                        st.stop()
+                else:
+                    if nome_col_inep not in df_rdo.columns:
+                        st.error(f"A coluna '{nome_col_inep}' não foi encontrada no RDO.")
+                        st.stop()
+                    serie_inep = df_rdo[nome_col_inep]
                 
-                # Garantir colunas necessárias
+                ineps_rdo = serie_inep.dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
+
+                # 2. Carregar OS
+                df_os = pd.read_excel(os_file)
                 if 'INEP' not in df_os.columns or 'Status' not in df_os.columns:
                     st.error("A planilha de Controle de OS precisa conter as colunas 'INEP' e 'Status'.")
                     st.stop()
                     
-                # 2. Filtrar chamados em aberto (eliminando concluídos e cancelados)
                 df_os_abertos = df_os[~df_os['Status'].astype(str).str.upper().str.contains('CONCLUÍDO|CONCLUIDO|CANCELADO|FECHADO', regex=True, na=False)].copy()
-                
-                # 3. Pegar lista de INEPs que possuem chamado aberto
                 ineps_com_chamado = df_os_abertos['INEP'].dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
                 
-                # 4. Carregar Relatório de Offline
-                # A planilha do Comparativo tem as abas 'Novas_Offline', 'Ainda_Offline' e 'Recuperadas_Online'
+                # 3. Carregar Relatório de Offline (Comparador)
                 xl = pd.ExcelFile(offline_file)
                 df_offline_list = []
                 df_recuperadas_list = []
@@ -51,14 +76,13 @@ if st.button("🔍 Cruzar Dados", type="primary", use_container_width=True):
                         df_recuperadas_list.append(df_sheet)
                 
                 if not df_offline_list:
-                    # Se por acaso não achar pelo nome, tenta ler a primeira aba
                     df_offline = xl.parse(0)
                 else:
                     df_offline = pd.concat(df_offline_list, ignore_index=True)
                     
                 df_recuperadas = pd.concat(df_recuperadas_list, ignore_index=True) if df_recuperadas_list else pd.DataFrame()
                 
-                # 5. Extrair INEP da planilha offline e das recuperadas
+                # 4. Extrair INEP da planilha offline e das recuperadas
                 col_name_off = 'NAME' if 'NAME' in df_offline.columns else df_offline.columns[0]
                 df_offline['INEP_Extraido'] = df_offline[col_name_off].astype(str).str.extract(r'(\d{6,})')[0]
                 
@@ -66,73 +90,80 @@ if st.button("🔍 Cruzar Dados", type="primary", use_container_width=True):
                     col_name_rec = 'NAME' if 'NAME' in df_recuperadas.columns else df_recuperadas.columns[0]
                     df_recuperadas['INEP_Extraido'] = df_recuperadas[col_name_rec].astype(str).str.extract(r'(\d{6,})')[0]
                 
-                # 6. Cruzar e Separar os dois grupos principais (Offline)
-                mask_tem_chamado = df_offline['INEP_Extraido'].isin(ineps_com_chamado)
+                # 5. Cruzar grupos - REGRA DE NEGÓCIO: SÓ ABRIR SE ESTIVER NO RDO
+                mask_no_rdo = df_offline['INEP_Extraido'].isin(ineps_rdo)
+                df_validos = df_offline[mask_no_rdo].copy()
+                df_ignorados = df_offline[~mask_no_rdo].copy()
                 
-                df_falta_abrir = df_offline[~mask_tem_chamado].copy()
-                df_ja_aberto = df_offline[mask_tem_chamado].copy()
+                # Dos válidos (que estão no RDO), verificamos se já tem chamado
+                mask_tem_chamado = df_validos['INEP_Extraido'].isin(ineps_com_chamado)
+                df_falta_abrir = df_validos[~mask_tem_chamado].copy()
+                df_ja_aberto = df_validos[mask_tem_chamado].copy()
                 
-                # Cruzar grupo de Recuperadas (Para achar quem voltou e tem chamado aberto)
+                # Cruzar grupo de Recuperadas
                 df_fechar_chamado = pd.DataFrame()
                 if not df_recuperadas.empty:
                     mask_rec_com_chamado = df_recuperadas['INEP_Extraido'].isin(ineps_com_chamado)
                     df_fechar_chamado = df_recuperadas[mask_rec_com_chamado].copy()
                 
-                # Enriquecer quem JÁ TEM chamado com as informações do ticket (Ticket#, Atribuído a, etc)
+                # 6. Enriquecer planilhas com dados da OS
                 df_os_abertos_unico = df_os_abertos.drop_duplicates(subset=['INEP'], keep='first')
                 df_os_abertos_unico['INEP'] = df_os_abertos_unico['INEP'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
                 
-                # Merge apenas das colunas úteis
                 colunas_merge = ['INEP', 'Ticket#', 'Status', 'Atribuído a']
                 colunas_merge = [c for c in colunas_merge if c in df_os_abertos_unico.columns]
                 
-                df_ja_aberto = df_ja_aberto.merge(df_os_abertos_unico[colunas_merge], 
-                                                  left_on='INEP_Extraido', right_on='INEP', how='left')
-                if 'INEP' in df_ja_aberto.columns:
-                    df_ja_aberto = df_ja_aberto.drop(columns=['INEP'])
+                # Merge Já Aberto
+                df_ja_aberto = df_ja_aberto.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
+                if 'INEP' in df_ja_aberto.columns: df_ja_aberto = df_ja_aberto.drop(columns=['INEP'])
                     
-                # Enriquecer aba de chamados para fechar (Recuperadas)
+                # Merge Recuperadas
                 if not df_fechar_chamado.empty:
-                    df_fechar_chamado = df_fechar_chamado.merge(df_os_abertos_unico[colunas_merge], 
-                                                      left_on='INEP_Extraido', right_on='INEP', how='left')
-                    if 'INEP' in df_fechar_chamado.columns:
-                        df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
+                    df_fechar_chamado = df_fechar_chamado.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
+                    if 'INEP' in df_fechar_chamado.columns: df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
                 
                 st.divider()
-                st.subheader("📊 Resultados do Cruzamento")
+                st.subheader("📊 Resultados do Cruzamento (Validados pelo RDO)")
                 
-                tab1, tab2, tab3 = st.tabs([
+                tab1, tab2, tab3, tab4 = st.tabs([
                     f"🚨 Falta Abrir Chamado ({len(df_falta_abrir)})", 
                     f"🎫 Já Possui Chamado ({len(df_ja_aberto)})",
-                    f"🟢 Fechar Chamado (Voltaram!) ({len(df_fechar_chamado)})"
+                    f"🟢 Fechar Chamado ({len(df_fechar_chamado)})",
+                    f"🚫 Ignorados - Fora do RDO ({len(df_ignorados)})"
                 ])
                 
                 with tab1:
-                    st.markdown("### Controladoras Offline SEM chamado aberto")
-                    st.write("Estas controladoras constam como Offline, mas **NÃO possuem registro de chamado** em andamento na planilha de OS.")
+                    st.markdown("### Controladoras Válidas SEM chamado aberto")
+                    st.write("Estão Offline, **constam no RDO**, mas **NÃO possuem registro de chamado**.")
                     st.dataframe(df_falta_abrir, use_container_width=True)
                 
                 with tab2:
-                    st.markdown("### Controladoras Offline COM chamado em andamento")
-                    st.write("Já existe um chamado sendo tratado para estes locais. (Os dados do Ticket foram adicionados no final da tabela).")
+                    st.markdown("### Controladoras Válidas COM chamado em andamento")
+                    st.write("Já existe um chamado ativo sendo tratado para estes locais.")
                     st.dataframe(df_ja_aberto, use_container_width=True)
                     
                 with tab3:
                     st.markdown("### Controladoras que Voltaram a Funcionar (COM chamado aberto)")
-                    st.write("Estas controladoras estavam offline, **voltaram a ficar online**, mas ainda possuem um chamado aberto na OS! Você pode usar essa lista para **fechar os chamados**.")
+                    st.write("Estavam offline, **voltaram a ficar online**, mas ainda possuem chamado aberto na OS!")
                     st.dataframe(df_fechar_chamado if not df_fechar_chamado.empty else pd.DataFrame(columns=['Nenhum chamado para fechar']), use_container_width=True)
+
+                with tab4:
+                    st.markdown("### Controladoras Offline FORA do RDO (Ignoradas)")
+                    st.write("Estas controladoras estão offline no Omada, mas **NÃO constam na planilha RDO**. Portanto, nenhum chamado deve ser aberto para elas.")
+                    st.dataframe(df_ignorados if not df_ignorados.empty else pd.DataFrame(columns=['Tudo certo!']), use_container_width=True)
                 
                 st.divider()
-                st.subheader("📥 Exportar Relatório de Ação")
+                st.subheader("📥 Exportar Relatório Final")
                 
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     if not df_falta_abrir.empty: df_falta_abrir.to_excel(writer, index=False, sheet_name='Falta_Abrir_Chamado')
                     if not df_ja_aberto.empty: df_ja_aberto.to_excel(writer, index=False, sheet_name='Chamados_Abertos')
                     if not df_fechar_chamado.empty: df_fechar_chamado.to_excel(writer, index=False, sheet_name='Fechar_Chamado_Recuperadas')
+                    if not df_ignorados.empty: df_ignorados.to_excel(writer, index=False, sheet_name='Ignorados_Fora_do_RDO')
                 
                 st.download_button(
-                    label="📥 Baixar Relatório (Excel)",
+                    label="📥 Baixar Relatório Completo (Excel)",
                     data=output.getvalue(),
                     file_name="Relatorio_Acao_Chamados.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
