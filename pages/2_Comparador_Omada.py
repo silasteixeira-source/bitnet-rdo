@@ -7,26 +7,58 @@ st.set_page_config(page_title="Comparador OMADA", page_icon="🔄", layout="wide
 st.title("🔄 Comparador de Status OMADA")
 st.markdown("Faça o upload de duas planilhas do Omada (uma antiga/base e uma nova) para comparar a evolução do status das controladoras.")
 
+st.info("⚠️ **Importante:** Por padrão, o sistema espera as planilhas no estado **BRUTO**, da exata forma como foram exportadas. Caso você tenha alterado as colunas, utilize as configurações avançadas abaixo para informar os novos nomes.")
+
 col1, col2 = st.columns(2)
 with col1:
-    st.info("🕒 Arquivo Antigo (Base)")
+    st.markdown("### 🕒 Arquivo Antigo (Base)")
     old_file = st.file_uploader("Upload da Planilha Omada Antiga", type=["xlsx", "xls"], key="old")
 
 with col2:
-    st.success("🆕 Arquivo Novo (Atual)")
+    st.markdown("### 🆕 Arquivo Novo (Atual)")
     new_file = st.file_uploader("Upload da Planilha Omada Nova", type=["xlsx", "xls"], key="new")
 
-def get_offline_controllers(df):
+st.divider()
+
+# Configurações Avançadas
+with st.expander("⚙️ Configurações Avançadas de Colunas (Opcional)"):
+    st.markdown("Se a planilha não for a original bruta, informe os nomes das colunas:")
+    modo_config = st.radio("Método de busca:", ["Usar padrão (Automático)", "Digitar manualmente o nome das colunas"])
+    
+    custom_name_col = ""
+    custom_status_col = ""
+    
+    if modo_config == "Digitar manualmente o nome das colunas":
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            custom_name_col = st.text_input("Nome da coluna com o NOME/INEP da controladora:", value="NAME")
+        with col_c2:
+            custom_status_col = st.text_input("Nome da coluna com o STATUS:", value="STATUS")
+
+def get_offline_controllers(df, force_name_col="", force_status_col=""):
     """Retorna um DataFrame apenas com as controladoras offline e identifica as colunas chave."""
-    col_name = 'NAME' if 'NAME' in df.columns else df.columns[0]
+    # Definição da coluna de NOME
+    if force_name_col:
+        if force_name_col not in df.columns:
+            raise ValueError(f"A coluna de nome especificada '{force_name_col}' não existe na planilha.")
+        col_name = force_name_col
+    else:
+        col_name = 'NAME' if 'NAME' in df.columns else df.columns[0]
+    
+    # Definição da coluna de STATUS
     col_status = None
-    for col in df.columns:
-        if 'status' in str(col).lower():
-            col_status = col
-            break
+    if force_status_col:
+        if force_status_col not in df.columns:
+            raise ValueError(f"A coluna de status especificada '{force_status_col}' não existe na planilha.")
+        col_status = force_status_col
+    else:
+        for col in df.columns:
+            if 'status' in str(col).lower():
+                col_status = col
+                break
             
     if col_status is None:
-        raise ValueError("A coluna 'STATUS' não foi encontrada na planilha.")
+        raise ValueError("A coluna de 'STATUS' não foi encontrada. Verifique se a planilha está no formato correto ou use as configurações avançadas.")
         
     cond_status = df[col_status].astype(str).str.upper().str.contains('OFFLINE')
     df_offline = df[cond_status].copy()
@@ -44,8 +76,12 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                 df_old = pd.read_excel(old_file)
                 df_new = pd.read_excel(new_file)
                 
-                df_offline_old, name_col_old, status_col_old = get_offline_controllers(df_old)
-                df_offline_new, name_col_new, status_col_new = get_offline_controllers(df_new)
+                # Se o usuário escolheu customizado, passa os nomes, senão passa string vazia
+                f_name = custom_name_col if modo_config == "Digitar manualmente o nome das colunas" else ""
+                f_status = custom_status_col if modo_config == "Digitar manualmente o nome das colunas" else ""
+                
+                df_offline_old, name_col_old, status_col_old = get_offline_controllers(df_old, f_name, f_status)
+                df_offline_new, name_col_new, status_col_new = get_offline_controllers(df_new, f_name, f_status)
                 
                 # Pegar apenas os nomes das controladoras offline
                 set_old = set(df_offline_old[name_col_old].astype(str).str.strip())
@@ -64,6 +100,23 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                 df_ainda = df_new[df_new['NOME_CLEAN'].isin(ainda_offline_names)].drop(columns=['NOME_CLEAN'])
                 df_recuperadas = df_old[df_old['NOME_CLEAN'].isin(recuperadas_names)].drop(columns=['NOME_CLEAN'])
                 
+                # Função interna para ordenar pela data de Last Uptime (do mais recente para o mais antigo)
+                def sort_by_uptime(df, status_col):
+                    if df.empty or status_col not in df.columns:
+                        return df
+                    # Extrai a string de data que vem depois de "Uptime:"
+                    temp_dates = df[status_col].astype(str).str.extract(r'(?i)Uptime:\s*(.*)')[0]
+                    # Converte para datetime e cria coluna temporária para ordenação
+                    df['_temp_date'] = pd.to_datetime(temp_dates, errors='coerce')
+                    # Ordena: ascending=False deixa as datas mais recentes (maiores) no topo
+                    df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
+                    return df
+
+                # Aplicando a ordenação nas planilhas de resultado
+                df_novas = sort_by_uptime(df_novas, status_col_new)
+                df_ainda = sort_by_uptime(df_ainda, status_col_new)
+                df_recuperadas = sort_by_uptime(df_recuperadas, status_col_old)
+
                 st.divider()
                 st.subheader("📊 Resultados da Comparação")
                 
@@ -80,17 +133,17 @@ if st.button("🚀 Comparar Status", type="primary", use_container_width=True):
                     
                 with tab1:
                     st.markdown("### Controladoras que caíram")
-                    st.write("Estavam online na planilha antiga, mas ficaram **OFFLINE** na planilha nova.")
+                    st.write("Estavam online na planilha antiga, mas ficaram **OFFLINE** na planilha nova. *(Ordenadas da queda mais recente para a mais antiga)*")
                     st.dataframe(df_novas[colunas_exibir_novas] if not df_novas.empty else df_novas, use_container_width=True)
                 
                 with tab2:
                     st.markdown("### Controladoras sem solução")
-                    st.write("Já estavam offline na planilha antiga e **CONTINUAM OFFLINE** na planilha nova.")
+                    st.write("Já estavam offline na planilha antiga e **CONTINUAM OFFLINE** na planilha nova. *(Ordenadas da queda mais recente para a mais antiga)*")
                     st.dataframe(df_ainda[colunas_exibir_novas] if not df_ainda.empty else df_ainda, use_container_width=True)
                     
                 with tab3:
                     st.markdown("### Controladoras que voltaram (Bônus!)")
-                    st.write("Estavam offline na planilha antiga, mas agora estão **ONLINE** na planilha nova.")
+                    st.write("Estavam offline na planilha antiga, mas agora estão **ONLINE** na planilha nova. *(Ordenadas por data original do status offline)*")
                     # Para as recuperadas, usamos as colunas do df_old
                     colunas_exibir_old = [name_col_old, status_col_old]
                     if 'MODEL' in df_old.columns: colunas_exibir_old.append('MODEL')
