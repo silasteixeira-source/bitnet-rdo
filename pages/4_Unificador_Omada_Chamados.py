@@ -1,6 +1,35 @@
 import streamlit as st
 import pandas as pd
 import io
+import gspread
+from google.oauth2.service_account import Credentials
+
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+
+@st.cache_resource
+def authenticate_gspread():
+    if "gcp_service_account" in st.secrets:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        return gspread.authorize(creds)
+    return None
+
+def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
+    sheet = client.open_by_url(spreadsheet_url)
+    try:
+        worksheet = sheet.worksheet(sheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
+    
+    worksheet.clear()
+    if not df.empty:
+        df_str = df.fillna("").astype(str)
+        worksheet.update([df_str.columns.values.tolist()] + df_str.values.tolist())
+    else:
+        worksheet.update([["Nenhum dado encontrado"]])
 
 st.set_page_config(page_title="Unificador Omada e Chamados", page_icon="⚡", layout="wide")
 
@@ -189,6 +218,25 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 type="primary",
                 use_container_width=True
             )
+            
+            st.divider()
+            st.subheader("☁️ Sincronizar com Google Sheets")
+            gsheet_url = st.text_input("URL da Planilha", value="https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
+            
+            if st.button("🚀 Sincronizar Agora (Sobrescrever)", type="secondary", use_container_width=True):
+                client = authenticate_gspread()
+                if client:
+                    with st.spinner("Limpando dados antigos e enviando novos para a nuvem..."):
+                        try:
+                            update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
+                            update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
+                            update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
+                            update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
+                            st.success("✅ Planilha Google atualizada com sucesso! Verifique as abas online.")
+                        except Exception as e_sheet:
+                            st.error(f"❌ Erro ao atualizar o Google Sheets: {e_sheet}")
+                else:
+                    st.error("❌ Credenciais do Google não encontradas no arquivo secrets.")
             
         except Exception as e:
             st.error(f"❌ Ocorreu um erro: {str(e)}")
