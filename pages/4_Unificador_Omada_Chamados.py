@@ -80,6 +80,88 @@ def get_offline_controllers(df, force_name_col="", force_status_col=""):
                 
     if col_status is None:
         raise ValueError("Coluna 'STATUS' não encontrada no Omada.")
+import streamlit as st
+import pandas as pd
+import io
+import gspread
+from google.oauth2.service_account import Credentials
+
+SCOPES = [
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+
+@st.cache_resource
+def authenticate_gspread():
+    if "gcp_service_account" in st.secrets:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        return gspread.authorize(creds)
+    return None
+
+def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
+    sheet = client.open_by_url(spreadsheet_url)
+    try:
+        worksheet = sheet.worksheet(sheet_name)
+    except gspread.exceptions.WorksheetNotFound:
+        worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
+    
+    worksheet.clear()
+    if not df.empty:
+        df_str = df.fillna("").astype(str)
+        worksheet.update([df_str.columns.values.tolist()] + df_str.values.tolist())
+    else:
+        worksheet.update([["Nenhum dado encontrado"]])
+
+st.set_page_config(page_title="Unificador Omada e Chamados", page_icon="⚡", layout="wide")
+
+st.title("⚡ Fluxo Unificado: Omada & Chamados")
+st.markdown("Faça o upload de todas as planilhas abaixo para cruzar automaticamente a evolução do Omada com o RDO e o Controle de OS.")
+
+# Entradas
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown("### 🕒 Omada Antigo")
+    old_file = st.file_uploader("Upload Omada Base", type=["xlsx", "xls"], key="old")
+with c2:
+    st.markdown("### 🆕 Omada Novo")
+    new_file = st.file_uploader("Upload Omada Atual", type=["xlsx", "xls"], key="new")
+with c3:
+    st.markdown("### 📊 Controle OS")
+    os_file = st.file_uploader("Upload Planilha OS", type=["xlsx", "xls"], key="os")
+with c4:
+    st.markdown("### 📁 RDO")
+    rdo_file = st.file_uploader("Upload Planilha RDO", type=["xlsx", "xls"], key="rdo")
+
+st.divider()
+
+# Configurações Avançadas de Colunas (Ocultas por padrão)
+with st.expander("⚙️ Configurações de Colunas (Apenas se a leitura falhar)"):
+    st.write("Configuração RDO:")
+    modo_coluna_inep = st.radio("Como achar o INEP no RDO?", ["Pela posição (Coluna M)", "Pelo nome da coluna"], horizontal=True)
+    nome_col_inep = st.text_input("Nome da coluna (se escolheu nome):", value="INEP")
+    
+    st.write("Configuração Omada:")
+    modo_config_omada = st.radio("Como achar NOME e STATUS no Omada?", ["Automático", "Manual"], horizontal=True)
+    custom_name_col = st.text_input("Nome da coluna NAME:", value="NAME")
+    custom_status_col = st.text_input("Nome da coluna STATUS:", value="STATUS")
+
+# Lógica principal
+def get_offline_controllers(df, force_name_col="", force_status_col=""):
+    """Retorna controladoras offline e identifica colunas."""
+    col_name = force_name_col if force_name_col else ('NAME' if 'NAME' in df.columns else df.columns[0])
+    
+    col_status = None
+    if force_status_col:
+        col_status = force_status_col
+    else:
+        for col in df.columns:
+            if 'status' in str(col).lower():
+                col_status = col
+                break
+                
+    if col_status is None:
+        raise ValueError("Coluna 'STATUS' não encontrada no Omada.")
         
     cond_status = df[col_status].astype(str).str.upper().str.contains('OFFLINE')
     df_offline = df[cond_status].copy()
@@ -93,6 +175,12 @@ def sort_by_uptime(df, status_col):
     df['_temp_date'] = pd.to_datetime(temp_dates, errors='coerce')
     df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
     return df
+
+st.divider()
+st.subheader("☁️ Configuração Google Sheets")
+sync_google = st.checkbox("Sincronizar automaticamente após o processamento", value=True)
+gsheet_url = st.text_input("URL da Planilha", value="https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
+st.write("")
 
 if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_width=True):
     if not (old_file and new_file and os_file and rdo_file):
@@ -220,13 +308,10 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
             )
             
             st.divider()
-            st.subheader("☁️ Sincronizar com Google Sheets")
-            gsheet_url = st.text_input("URL da Planilha", value="https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
-            
-            if st.button("🚀 Sincronizar Agora (Sobrescrever)", type="secondary", use_container_width=True):
+            if sync_google:
                 client = authenticate_gspread()
                 if client:
-                    with st.spinner("Limpando dados antigos e enviando novos para a nuvem..."):
+                    with st.spinner("☁️ Sincronizando dados com o Google Sheets..."):
                         try:
                             update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
                             update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
