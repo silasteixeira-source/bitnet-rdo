@@ -106,7 +106,7 @@ destino_planilha = st.radio(
 
 # URLs Padrões (Podem ser editadas pelo usuário se necessário)
 default_bitnet = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
-default_st1 = ""
+default_st1 = "https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit"
 
 if destino_planilha == "BITNET":
     gsheet_url = st.text_input("URL da Planilha BITNET", value=default_bitnet)
