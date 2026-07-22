@@ -97,7 +97,22 @@ def sort_by_uptime(df, status_col):
 st.divider()
 st.subheader("☁️ Configuração Google Sheets")
 sync_google = st.checkbox("Sincronizar automaticamente após o processamento", value=True)
-gsheet_url = st.text_input("URL da Planilha", value="https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
+
+destino_planilha = st.radio(
+    "Para qual planilha deseja enviar os dados?",
+    ["BITNET", "ST1"],
+    horizontal=True
+)
+
+# URLs Padrões (Podem ser editadas pelo usuário se necessário)
+default_bitnet = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
+default_st1 = ""
+
+if destino_planilha == "BITNET":
+    gsheet_url = st.text_input("URL da Planilha BITNET", value=default_bitnet)
+else:
+    gsheet_url = st.text_input("URL da Planilha ST1", value=default_st1)
+
 st.write("")
 
 if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_width=True):
