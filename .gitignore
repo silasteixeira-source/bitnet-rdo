@@ -1,0 +1,10 @@
+.streamlit/secrets.toml
+acompanhamento.db
+*.ini
+desktop.ini
+*/desktop.ini
+__pycache__/
+*.pyc
+*.xlsx
+*.xls
+temp_git*

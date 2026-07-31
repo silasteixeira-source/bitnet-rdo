@@ -17,6 +17,27 @@ def authenticate_gspread():
         return gspread.authorize(creds)
     return None
 
+@st.cache_data(ttl=3600)
+def get_escolas_eace_map():
+    client = authenticate_gspread()
+    if not client:
+        return {}
+    try:
+        sh = client.open_by_key('1Onw1vaSO2SIQ_OfAoDPI6ycnXWTAZ2ijhtujAOhI9UM')
+        ws = sh.worksheet('EACE')
+        data = ws.get_all_values()
+        if len(data) > 1:
+            df_eace = pd.DataFrame(data[1:], columns=data[0])
+            mapping = {
+                str(r.iloc[3]).strip().replace('.0', ''): str(r.iloc[4]).strip()
+                for _, r in df_eace.iterrows()
+                if str(r.iloc[3]).strip()
+            }
+            return mapping
+    except Exception as e:
+        st.warning(f"Aviso: Não foi possível carregar mapeamento de escolas da EACE ({e})")
+    return {}
+
 def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
     sheet = client.open_by_url(spreadsheet_url)
     try:
@@ -229,14 +250,39 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                     df_fechar_chamado = df_fechar_chamado.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
                     if 'INEP' in df_fechar_chamado.columns: df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
 
-                # Adicionar coluna de horário de processamento (Brasília UTC-3) para todas as tabelas
+                # Enriquecimento EACE (Nome da Escola), Limpeza de Colunas e Horário de Brasília UTC-3
+                escolas_eace_map = get_escolas_eace_map()
+                cols_remover_omada_set = {'description', 'type', 'model', 'customer number', 'site number', 'device number', 'alert number', 'role', 'roles'}
+                
                 from datetime import datetime, timezone, timedelta
                 fuso_br = timezone(timedelta(hours=-3))
                 hora_execucao_br = datetime.now(fuso_br).strftime("%d/%m/%Y %H:%M:%S")
                 
-                for df_target in [df_falta_abrir, df_ja_aberto, df_fechar_chamado, df_ignorados]:
-                    if isinstance(df_target, pd.DataFrame):
-                        df_target['Atualizado Em'] = hora_execucao_br
+                def formatar_e_limpar(df_alvo):
+                    if not isinstance(df_alvo, pd.DataFrame):
+                        return df_alvo
+                    # 1. Remover colunas extras do Omada (insensível a maiúsculas/minúsculas e espaços)
+                    cols_drop = [c for c in df_alvo.columns if str(c).strip().lower() in cols_remover_omada_set]
+                    df_alvo = df_alvo.drop(columns=cols_drop, errors='ignore')
+                    
+                    # 2. Inserir Nome da Escola via EACE
+                    if 'INEP_Extraido' in df_alvo.columns:
+                        df_alvo['Nome da Escola'] = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True).map(escolas_eace_map).fillna("Não Cadastrado na EACE")
+                        cols = list(df_alvo.columns)
+                        if 'Nome da Escola' in cols:
+                            cols.remove('Nome da Escola')
+                            pos = cols.index('INEP_Extraido') + 1 if 'INEP_Extraido' in cols else 1
+                            cols.insert(pos, 'Nome da Escola')
+                            df_alvo = df_alvo[cols]
+                            
+                    # 3. Adicionar coluna Atualizado Em no final
+                    df_alvo['Atualizado Em'] = hora_execucao_br
+                    return df_alvo
+
+                df_falta_abrir = formatar_e_limpar(df_falta_abrir)
+                df_ja_aberto = formatar_e_limpar(df_ja_aberto)
+                df_fechar_chamado = formatar_e_limpar(df_fechar_chamado)
+                df_ignorados = formatar_e_limpar(df_ignorados)
 
             st.success(f"✅ Processamento Concluído em {hora_execucao_br} (Horário de Brasília)!")
             st.info(f"🕒 A coluna **'Atualizado Em'** (`{hora_execucao_br}`) foi anexada a todos os relatórios e abas para indicar o momento exato em que o fluxo foi rodado.")
