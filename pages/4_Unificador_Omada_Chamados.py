@@ -177,6 +177,39 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 df_falta_abrir = df_validos[~mask_tem_chamado].copy()
                 df_ja_aberto = df_validos[mask_tem_chamado].copy()
                 
+                # --- NOVA REGRA 4 HORAS OFFLINE PARA FALTA_ABRIR_CHAMADO ---
+                dt_todos = pd.to_datetime(df_new[status_new].astype(str).str.extract(r'(?i)Uptime:\s*(.*)')[0], errors='coerce')
+                ref_time = dt_todos.max()
+                if pd.isna(ref_time):
+                    ref_time = pd.Timestamp.now()
+                
+                def avaliar_regra_4h(val_status):
+                    dt_str = pd.Series([str(val_status)]).str.extract(r'(?i)Uptime:\s*(.*)')[0].iloc[0]
+                    dt_off = pd.to_datetime(dt_str, errors='coerce')
+                    if pd.isna(dt_off):
+                        return "⚠️ Verificar tempo offline"
+                    diff_hours = (ref_time - dt_off).total_seconds() / 3600.0
+                    if diff_hours < 0:
+                        diff_hours = 0.0
+                    h = int(diff_hours)
+                    m = int(round((diff_hours - h) * 60))
+                    if m == 60:
+                        h += 1
+                        m = 0
+                    if diff_hours >= 4.0:
+                        return f"✅ PODE ABRIR (>4h) - Offline há {h}h{m}m"
+                    else:
+                        return f"⏳ AGUARDAR (<4h) - Offline há {h}h{m}m"
+
+                if not df_falta_abrir.empty and status_new in df_falta_abrir.columns:
+                    df_falta_abrir['Regra de Abertura (4h Offline)'] = df_falta_abrir[status_new].apply(avaliar_regra_4h)
+                    cols = list(df_falta_abrir.columns)
+                    if 'Regra de Abertura (4h Offline)' in cols:
+                        cols.remove('Regra de Abertura (4h Offline)')
+                        pos = cols.index('INEP_Extraido') + 1 if 'INEP_Extraido' in cols else 1
+                        cols.insert(pos, 'Regra de Abertura (4h Offline)')
+                        df_falta_abrir = df_falta_abrir[cols]
+                
                 # NOVA LÓGICA DE FECHAR CHAMADOS: Controladoras ONLINE com chamado aberto
                 cond_online = ~df_new[status_new].astype(str).str.upper().str.contains('OFFLINE')
                 df_online_new = df_new[cond_online].copy()
