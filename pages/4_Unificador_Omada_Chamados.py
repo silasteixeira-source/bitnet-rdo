@@ -229,7 +229,17 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                     df_fechar_chamado = df_fechar_chamado.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
                     if 'INEP' in df_fechar_chamado.columns: df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
 
-            st.success("✅ Processamento Concluído!")
+                # Adicionar coluna de horário de processamento (Brasília UTC-3) para todas as tabelas
+                from datetime import datetime, timezone, timedelta
+                fuso_br = timezone(timedelta(hours=-3))
+                hora_execucao_br = datetime.now(fuso_br).strftime("%d/%m/%Y %H:%M:%S")
+                
+                for df_target in [df_falta_abrir, df_ja_aberto, df_fechar_chamado, df_ignorados]:
+                    if isinstance(df_target, pd.DataFrame):
+                        df_target['Atualizado Em'] = hora_execucao_br
+
+            st.success(f"✅ Processamento Concluído em {hora_execucao_br} (Horário de Brasília)!")
+            st.info(f"🕒 A coluna **'Atualizado Em'** (`{hora_execucao_br}`) foi anexada a todos os relatórios e abas para indicar o momento exato em que o fluxo foi rodado.")
             st.divider()
             
             # --- RESULTADOS ---
