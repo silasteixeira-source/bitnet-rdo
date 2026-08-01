@@ -8,7 +8,7 @@ services:
       - OMADA_CLI=true
       - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
-      - OMADA_INTERVAL=${OMADA_INTERVAL:-3600}
+      - OMADA_INTERVAL=${OMADA_INTERVAL:-600}
       - OMADA_DIR=/app/dados_omada
     volumes:
       - ./omada/dados_omada:/app/dados_omada
