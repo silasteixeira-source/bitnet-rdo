@@ -1164,11 +1164,8 @@ def run_cli_mode(args):
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
 
     exporter.on_log = cli_log
-    exporter.start()
-
     try:
-        while exporter.running:
-            time.sleep(1)
+        exporter.run()
     except (KeyboardInterrupt, SystemExit):
         print("\nInterrupção recebida. Parando exportador CLI...")
         exporter.stop()
