@@ -219,9 +219,20 @@ class OmadaExporter:
         opts.add_argument("--disable-software-rasterizer")
         opts.add_argument("--remote-debugging-pipe")
         opts.add_argument("--remote-allow-origins=*")
-        opts.add_argument("--js-flags=--max-old-space-size=256")
+        opts.add_argument("--js-flags=--max-old-space-size=512")
+        opts.add_argument("--disable-site-isolation-trials")
+        opts.add_argument("--disable-features=IsolateOrigins,site-per-process,Translate,BackForwardCache")
+        opts.add_argument("--disable-background-timer-throttling")
+        opts.add_argument("--disable-renderer-backgrounding")
+        opts.add_argument("--disable-breakpad")
+        opts.add_argument("--disable-component-update")
+        opts.add_argument("--disable-domain-reliability")
+        opts.add_argument("--disable-sync")
+        opts.add_argument("--metrics-recording-only")
+        opts.add_argument("--no-first-run")
+        opts.add_argument("--mute-audio")
         opts.add_argument("--disk-cache-size=1")
-        opts.add_argument("--window-size=1920,1080")
+        opts.add_argument("--window-size=1280,720")
         opts.add_argument("--disable-infobars")
         opts.add_argument("--headless=new") # Usar novo modo headless estável do Chromium moderno
 
@@ -680,54 +691,42 @@ class OmadaExporter:
                 pass
             return False
 
-    def _wait_for_download(self, timeout=30):
-        """Aguarda o arquivo ser baixado e renomeia para o nome padrão."""
+    def _wait_for_download(self, timeout=45):
+        """Aguarda o arquivo ser baixado, sobrescreve omada_dados.xlsx e limpa arquivos antigos."""
         start = time.time()
         target = os.path.join(self.download_dir, self.filename)
 
-        # Primeiro, registrar todos os xlsx existentes antes do download
-        existing_files = set()
-        for fpath in glob.glob(os.path.join(self.download_dir, "*.xlsx")):
-            existing_files.add(os.path.abspath(fpath))
-            # Também incluir arquivos temporários do Chrome
-        for fpath in glob.glob(os.path.join(self.download_dir, "*.crdownload")):
-            existing_files.add(os.path.abspath(fpath))
-
-        self._log("Aguardando download...")
+        self._log("Aguardando download do Excel...")
 
         while time.time() - start < timeout:
             if not self.running:
                 return False
 
-            # Verificar arquivos .xlsx novos (que não estavam na lista anterior)
-            for fpath in glob.glob(os.path.join(self.download_dir, "*.xlsx")):
-                abs_fpath = os.path.abspath(fpath)
-                if abs_fpath not in existing_files:
-                    self._log(f"Download detectado: {os.path.basename(fpath)}")
-                    self._wait(2)  # Aguardar o arquivo ser completamente escrito
-                    self._rename_to_target(fpath, target)
-                    return True
+            # Procurar arquivos baixados (que não sejam omada_dados.xlsx nem crdownload)
+            xlsx_files = [
+                f for f in glob.glob(os.path.join(self.download_dir, "*.xlsx"))
+                if os.path.abspath(f) != os.path.abspath(target) and not f.endswith(".crdownload")
+            ]
 
-            # Verificar se o arquivo de destino já foi atualizado recentemente
-            if os.path.exists(target):
-                mtime = os.path.getmtime(target)
-                if time.time() - mtime < 15 and os.path.getsize(target) > 0:
-                    self._log("Arquivo de destino atualizado.")
-                    return True
+            if xlsx_files:
+                # Pegar o arquivo mais recente baixado
+                xlsx_files.sort(key=os.path.getmtime, reverse=True)
+                newest_file = xlsx_files[0]
 
-            # Verificar se há arquivos .crdownload (download em andamento)
-            crdownloads = glob.glob(os.path.join(self.download_dir, "*.crdownload"))
-            if crdownloads:
-                self._log("Download em andamento...")
-            else:
-                # Nenhum crdownload e nenhum novo xlsx - talvez o download falhou
-                # Verificar se há um xlsx muito recente (menos de 5s)
-                for fpath in glob.glob(os.path.join(self.download_dir, "*.xlsx")):
-                    if os.path.getmtime(fpath) > time.time() - 5:
-                        self._log(f"Download detectado (recente): {os.path.basename(fpath)}")
-                        self._wait(1)
-                        self._rename_to_target(fpath, target)
-                        return True
+                # Esperar 2s para garantir escrita finalizada
+                self._wait(2)
+
+                self._log(f"Download detectado: {os.path.basename(newest_file)}")
+                self._rename_to_target(newest_file, target)
+
+                # Limpar quaisquer outros arquivos antigos OrganizationList*.xlsx que tenham sobrado
+                for old_f in xlsx_files[1:]:
+                    try:
+                        os.remove(old_f)
+                    except Exception:
+                        pass
+
+                return True
 
             time.sleep(1)
 
@@ -735,29 +734,22 @@ class OmadaExporter:
         return False
 
     def _rename_to_target(self, source, target):
-        """Remove o destino antigo e renomeia/copiar o novo arquivo para manter a base de dados única."""
+        """Remove o destino antigo e renomeia/copia o novo arquivo para manter a base de dados única."""
         try:
-            # Forçar a remoção do arquivo antigo se ele existir
             if os.path.exists(target):
                 try:
                     os.remove(target)
-                    self._log(f"  Base de dados antiga removida para atualização.")
-                except Exception as e:
-                    self._log(f"  Aviso ao remover base antiga: {e}")
-            
-            # Tentar renomear o novo arquivo para o nome de destino (sobrescrevendo)
+                except Exception:
+                    pass
+
+            import shutil
             try:
-                # Usar shutil.move que é mais robusto para sobrescrever e lidar com diferentes sistemas de arquivos
-                import shutil
                 shutil.move(source, target)
-                self._log(f"  BASE DE DADOS ATUALIZADA: {os.path.basename(target)}")
-            except Exception as e:
-                self._log(f"  Erro ao mover arquivo: {e}. Tentando cópia direta.")
-                import shutil
+            except Exception:
                 shutil.copy2(source, target)
                 os.remove(source)
-                self._log(f"  BASE DE DADOS COPIADA: {os.path.basename(target)}")
-                
+
+            self._log(f"  BASE DE DADOS ATUALIZADA E SOBRESCRITA: {os.path.basename(target)}")
         except Exception as e:
             self._log(f"ERRO CRÍTICO ao atualizar base de dados: {e}")
 
@@ -805,6 +797,16 @@ class OmadaExporter:
             else:
                 self._log("Primeira exportação falhou. Tentando próxima...")
 
+            # Fechar Chrome imediatamente após exportação inicial para liberar RAM na VPS
+            if self.driver:
+                try:
+                    self.driver.quit()
+                except Exception:
+                    pass
+                self.driver = None
+                self.is_logged_in = False
+                self.is_list_view = False
+
             # Loop periódico
             while self.running:
                 self._log(f"Aguardando {self.interval}s para próxima exportação...")
@@ -816,30 +818,23 @@ class OmadaExporter:
                 self._log("--- Nova exportação ---")
                 self._set_status("Exportando...")
 
-                # Verificar se a sessão ainda está ativa
-                try:
-                    url = self.driver.current_url
-                    if "login" in url.lower() or "id.tplink" in url.lower():
-                        self._log("Sessão expirada. Refazendo login...")
+                # Recriar driver do zero (garante RAM 100% limpa sem vazamento de memória)
+                self._ensure_driver()
+                if not self._do_login():
+                    self._log("Login falhou. Tentando na próxima iteração.")
+                    if self.driver:
+                        try:
+                            self.driver.quit()
+                        except Exception:
+                            pass
+                        self.driver = None
                         self.is_logged_in = False
                         self.is_list_view = False
-                        if not self._do_login():
-                            self._log("Login falhou. Tentando na próxima iteração.")
-                            continue
-                        self._wait(3)
-                        self._switch_to_list_view()
-                        self._wait(2)
-                except Exception:
-                    self._log("Conexão perdida. Reconectando...")
-                    self.driver = None
-                    self.is_logged_in = False
-                    self.is_list_view = False
-                    self._ensure_driver()
-                    if not self._do_login():
-                        continue
-                    self._wait(3)
-                    self._switch_to_list_view()
-                    self._wait(2)
+                    continue
+
+                self._wait(3)
+                self._switch_to_list_view()
+                self._wait(2)
 
                 if self._export_once():
                     self.export_count += 1
@@ -847,6 +842,16 @@ class OmadaExporter:
                     self._log(f"Exportação #{self.export_count} concluída com sucesso.")
                 else:
                     self._log("Falha nesta exportação. Tentando na próxima...")
+
+                # Fechar Chrome após exportar para liberar 100% da RAM durante repouso
+                if self.driver:
+                    try:
+                        self.driver.quit()
+                    except Exception:
+                        pass
+                    self.driver = None
+                    self.is_logged_in = False
+                    self.is_list_view = False
 
         except Exception as e:
             self._log(f"ERRO CRÍTICO: {e}")
