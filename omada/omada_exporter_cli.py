@@ -734,15 +734,25 @@ class OmadaExporter:
         return False
 
     def _rename_to_target(self, source, target):
-        """Remove o destino antigo e renomeia/copia o novo arquivo para manter a base de dados única."""
+        """Salva a versão anterior para comparações e renomeia o novo arquivo para manter a base principal."""
         try:
+            import shutil
+            # Se já existe o omada_dados.xlsx atual, salvar como versão anterior (omada_dados_anterior.xlsx)
+            old_target = os.path.join(os.path.dirname(target), "omada_dados_anterior.xlsx")
             if os.path.exists(target):
+                try:
+                    if os.path.exists(old_target):
+                        os.remove(old_target)
+                    shutil.copy2(target, old_target)
+                    self._log(f"  Versão anterior salva em: {os.path.basename(old_target)}")
+                except Exception as e_old:
+                    self._log(f"  Aviso: Não foi possível salvar versão anterior: {e_old}")
+
                 try:
                     os.remove(target)
                 except Exception:
                     pass
 
-            import shutil
             try:
                 shutil.move(source, target)
             except Exception:
