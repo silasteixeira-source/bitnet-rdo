@@ -256,9 +256,9 @@ def main():
     exporter = EACEOSExporter(headless=headless, intervalo=intervalo)
 
     if intervalo > 0:
-        print(f"[EACE Exporter] Modo contínuo ativado (intervalo: {intervalo}s).")
-        print("[EACE Exporter] Aguardando 180s (3 min) de delay inicial para que o Omada Exporter conclua na VPS...")
-        time.sleep(180)
+        print(f"[EACE Exporter] Modo contínuo ativado (intervalo: {intervalo}s - 5 min).")
+        print("[EACE Exporter] Aguardando 90s (1.5 min) de delay inicial para que o Omada Exporter conclua na VPS...")
+        time.sleep(90)
         while True:
             exporter.run()
             time.sleep(intervalo)

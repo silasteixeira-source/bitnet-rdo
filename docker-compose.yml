@@ -8,7 +8,7 @@ services:
       - OMADA_CLI=true
       - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
-      - OMADA_INTERVAL=${OMADA_INTERVAL:-600}
+      - OMADA_INTERVAL=${OMADA_INTERVAL:-300}
       - OMADA_DIR=/app/dados_omada
     volumes:
       - ./omada/dados_omada:/app/dados_omada
@@ -21,7 +21,7 @@ services:
     environment:
       - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
-      - EACE_INTERVAL=${EACE_INTERVAL:-600}
+      - EACE_INTERVAL=${EACE_INTERVAL:-300}
     volumes:
       - ./eace/dados_eace:/app/dados_eace
-    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "600"]
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "300"]
