@@ -127,21 +127,43 @@ class EACEOSExporter:
                     break
 
             time.sleep(2)
-            # Garantir clique explícito no botão de Log In / Entrar via JS caso o Enter não submeta o formulário
-            for b in self.driver.find_elements(By.TAG_NAME, "button"):
-                txt = b.text.lower()
-                if "log in" in txt or "login" in txt or "entrar" in txt:
+            # Garantir clique explícito no botão de Log In / Entrar / Acessar via JS
+            botoes = self.driver.find_elements(By.XPATH, "//button | //input[@type='submit'] | //*[@role='button'] | //a[contains(@class, 'btn')]")
+            self.log(f"Botões detectados na tela de login: {[b.text.strip() or str(b.get_attribute('value')) for b in botoes]}")
+            clicado = False
+            for b in botoes:
+                txt = (b.text or str(b.get_attribute("value")) or "").lower()
+                if any(k in txt for k in ["log in", "login", "entrar", "acessar", "sign in", "continuar", "próximo", "avançar"]) or b.get_attribute("type") == "submit":
                     try:
                         self.driver.execute_script("arguments[0].click();", b)
+                        clicado = True
+                        self.log(f" -> Botão de login clicado: '{txt}'")
+                        break
                     except Exception:
                         try:
                             b.click()
+                            clicado = True
+                            self.log(f" -> Botão de login clicado (via click): '{txt}'")
+                            break
                         except Exception:
                             pass
-                    break
+            if not clicado and botoes:
+                try:
+                    self.driver.execute_script("arguments[0].click();", botoes[0])
+                    self.log(" -> Clique de fallback executado no primeiro botão da página.")
+                except Exception:
+                    pass
 
-            time.sleep(10)
+            time.sleep(12)
             self.log(f"URL após Log In: {self.driver.current_url}")
+            if "login" in self.driver.current_url.lower():
+                try:
+                    corpo_txt = self.driver.find_element(By.TAG_NAME, "body").text
+                    alertas = [linha for linha in corpo_txt.split("\n") if any(w in linha.lower() for w in ["erro", "inválid", "senha", "credencial", "falha", "obrigatório", "captcha"])]
+                    if alertas:
+                        self.log(f" -> Avisos detectados na tela de login: {alertas}")
+                except Exception:
+                    pass
 
             # Passo 2: Clicar em "Fornecedor" no modal de seleção de perfil
             self.log("2. Selecionando perfil Fornecedor...")
