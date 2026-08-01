@@ -229,21 +229,25 @@ class EACEOSExporter:
         """
         try:
             self.log("Buscando botão de exportação da planilha RI (Rede Interna)...")
-            # Mapear os botões de ícone da barra superior direita
+            # Mapear os botões de ícone da barra superior direita com maior tolerância de coordenadas
             buttons = []
             for btn in self.driver.find_elements(By.TAG_NAME, "button"):
-                r = btn.rect
-                if r["x"] > 1500 and 100 < r["y"] < 250 and r["width"] < 60:
-                    buttons.append((r["x"], btn))
+                try:
+                    r = btn.rect
+                    if r["x"] > 1100 and r["y"] < 350 and r["width"] < 80:
+                        buttons.append((r["x"], btn))
+                except Exception:
+                    pass
             buttons.sort(key=lambda item: item[0])
+            self.log(f" -> Botões de ícone detectados na barra superior: {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
 
             if not buttons:
-                self.log("Erro: Botão de download do RI não encontrado na barra superior direita.")
+                self.log("❌ Erro: Botão de download do RI não encontrado na barra superior direita.")
                 return False
 
             # O primeiro botão na barra corresponde ao RI
             x_pos, btn_element = buttons[0]
-            self.log(f"Clicando no botão de download RI na posição X={x_pos} via JS...")
+            self.log(f" -> Clicando no botão de download RI (X={int(x_pos)}) via JS...")
             self.driver.execute_script("arguments[0].click();", btn_element)
 
             # Aguardar o novo arquivo na pasta temporária
