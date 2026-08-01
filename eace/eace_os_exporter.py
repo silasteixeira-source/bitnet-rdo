@@ -171,8 +171,8 @@ class EACEOSExporter:
 
             # O primeiro botão na barra corresponde ao RI
             x_pos, btn_element = buttons[0]
-            self.log(f"Clicando no botão de download RI na posição X={x_pos}...")
-            btn_element.click()
+            self.log(f"Clicando no botão de download RI na posição X={x_pos} via JS...")
+            self.driver.execute_script("arguments[0].click();", btn_element)
 
             # Aguardar o novo arquivo na pasta temporária
             timeout = 45

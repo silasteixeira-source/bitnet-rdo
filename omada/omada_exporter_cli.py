@@ -345,9 +345,9 @@ class OmadaExporter:
                     login_button = wait.until(
                         EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Sign In')] | //a[contains(., 'Sign In')] | //div[contains(., 'Sign In')] | //span[contains(., 'Sign In')] | //*[normalize-space()='Sign In']"))
                     )
-                    login_button.click()
+                    driver.execute_script("arguments[0].click();", login_button)
                     login_clicked = True
-                    self._log("  Botão 'Sign In' clicado.")
+                    self._log("  Botão 'Sign In' clicado via JS.")
                 except Exception as e:
                     self._log(f"  Falha ao encontrar e clicar no botão 'Sign In': {e}")
 
@@ -472,8 +472,8 @@ class OmadaExporter:
                 self._log("Botão LIST não encontrado.")
                 return False
 
-            # CLICA UMA ÚNICA VEZ
-            radios[1].click()
+            # CLICA UMA ÚNICA VEZ VIA JS PARA EVITAR INTERCEPTAÇÃO POR BANNERS/HEADER
+            driver.execute_script("arguments[0].click();", radios[1])
 
             self._log("LIST clicado.")
             self._log("Aguardando aparecer o texto Exportar...")
@@ -566,8 +566,8 @@ class OmadaExporter:
                     elements = driver.find_elements(By.XPATH, "//*[normalize-space()='Exportar']")
                     for el in elements:
                         if el.is_displayed():
-                            el.click()
-                            self._log("  Elemento 'Exportar' clicado.")
+                            driver.execute_script("arguments[0].click();", el)
+                            self._log("  Elemento 'Exportar' clicado via JS.")
                             break
             except Exception as e:
                 self._log(f"  Erro ao clicar no primeiro Exportar: {e}")
