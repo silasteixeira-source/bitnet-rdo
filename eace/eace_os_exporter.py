@@ -69,12 +69,14 @@ class EACEOSExporter:
         self.log("Inicializando Google Chrome / Chromium...")
         opts = Options()
         if self.headless:
-            opts.add_argument("--headless")
+            opts.add_argument("--headless=new")
         opts.add_argument("--disable-gpu")
         opts.add_argument("--no-sandbox")
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--disable-software-rasterizer")
         opts.add_argument("--disable-extensions")
+        opts.add_argument("--remote-debugging-pipe")
+        opts.add_argument("--remote-allow-origins=*")
         opts.add_argument("--js-flags=--max-old-space-size=256")
         opts.add_argument("--disk-cache-size=1")
         opts.add_argument("--window-size=1920,1080")
@@ -231,6 +233,8 @@ def main():
 
     if intervalo > 0:
         print(f"[EACE Exporter] Modo contínuo ativado (intervalo: {intervalo}s).")
+        print("[EACE Exporter] Aguardando 30s de delay inicial para evitar colisão com o Omada Exporter na VPS...")
+        time.sleep(30)
         while True:
             exporter.run()
             time.sleep(intervalo)

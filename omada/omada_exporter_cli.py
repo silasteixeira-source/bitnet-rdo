@@ -216,9 +216,14 @@ class OmadaExporter:
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--no-sandbox")
         opts.add_argument("--disable-gpu")
+        opts.add_argument("--disable-software-rasterizer")
+        opts.add_argument("--remote-debugging-pipe")
+        opts.add_argument("--remote-allow-origins=*")
+        opts.add_argument("--js-flags=--max-old-space-size=256")
+        opts.add_argument("--disk-cache-size=1")
         opts.add_argument("--window-size=1920,1080")
         opts.add_argument("--disable-infobars")
-        opts.add_argument("--headless") # Adicionar modo headless para VMs Linux
+        opts.add_argument("--headless=new") # Usar novo modo headless estável do Chromium moderno
 
         # Preferências de download e segurança
         opts.add_experimental_option("prefs", {
