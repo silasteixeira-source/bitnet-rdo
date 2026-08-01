@@ -1,0 +1,27 @@
+services:
+  # Robô 1: Omada Exporter (Baixa a planilha do Omada Cloud Controller)
+  omada-exporter:
+    build: ./omada
+    container_name: rdo_omada_exporter
+    restart: unless-stopped
+    environment:
+      - OMADA_CLI=true
+      - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
+      - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
+      - OMADA_INTERVAL=${OMADA_INTERVAL:-3600}
+      - OMADA_DIR=/app/dados_omada
+    volumes:
+      - ./omada/dados_omada:/app/dados_omada
+
+  # Robô 2: EACE OS Exporter (Baixa a planilha RI do portal EACE / Aprender Conectado)
+  eace-os-exporter:
+    build: ./eace
+    container_name: rdo_eace_os_exporter
+    restart: unless-stopped
+    environment:
+      - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
+      - EACE_PASSWORD=${EACE_PASSWORD:-""}
+      - EACE_INTERVAL=${EACE_INTERVAL:-3600}
+    volumes:
+      - ./eace/dados_eace:/app/dados_eace
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "3600"]

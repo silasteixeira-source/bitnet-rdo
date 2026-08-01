@@ -1,0 +1,11 @@
+services:
+  eace-os-exporter:
+    build: .
+    container_name: eace_os_exporter_robot
+    restart: always
+    environment:
+      - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
+      - EACE_PASSWORD=${EACE_PASSWORD:-""}
+    volumes:
+      - ./dados_eace:/app/dados_eace
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "3600"]
