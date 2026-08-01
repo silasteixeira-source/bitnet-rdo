@@ -120,7 +120,24 @@ class EACEOSExporter:
                 elif t == "password":
                     inp.clear()
                     inp.send_keys(self.password)
-                    inp.send_keys(Keys.RETURN)
+                    try:
+                        inp.send_keys(Keys.RETURN)
+                    except Exception:
+                        pass
+                    break
+
+            time.sleep(2)
+            # Garantir clique explícito no botão de Log In / Entrar via JS caso o Enter não submeta o formulário
+            for b in self.driver.find_elements(By.TAG_NAME, "button"):
+                txt = b.text.lower()
+                if "log in" in txt or "login" in txt or "entrar" in txt:
+                    try:
+                        self.driver.execute_script("arguments[0].click();", b)
+                    except Exception:
+                        try:
+                            b.click()
+                        except Exception:
+                            pass
                     break
 
             time.sleep(10)
