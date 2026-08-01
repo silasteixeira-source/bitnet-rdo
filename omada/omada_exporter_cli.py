@@ -23,9 +23,19 @@ import time
 import glob
 import shutil
 import threading
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox, filedialog
+    TKINTER_AVAILABLE = True
+except ImportError:
+    tk = None
+    ttk = None
+    messagebox = None
+    filedialog = None
+    TKINTER_AVAILABLE = False
 from datetime import datetime
+import json
+import pandas as pd
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -59,12 +69,13 @@ def get_default_download_dir():
 class OmadaExporter:
     """Gerencia a automação do Omada Cloud via Selenium."""
 
-    def __init__(self, email, password, interval, download_dir, filename):
+    def __init__(self, email, password, interval, download_dir, filename, eace_path=None):
         self.email = email
         self.password = password
         self.interval = interval
         self.download_dir = download_dir
         self.filename = filename
+        self.eace_path = eace_path
         self.running = False
         self.driver = None
         self.export_count = 0
@@ -73,6 +84,101 @@ class OmadaExporter:
         self.is_list_view = False
         self.on_log = None
         self.on_status = None
+        
+        # Sistema de rastreamento de dados processados
+        self.db_path = os.path.join(self.download_dir, "processamento_status.json")
+        self.general_db_path = os.path.join(self.download_dir, "planilha_geral_novos_dados.xlsx")
+        self.processed_data = self._load_processed_data()
+        self.inep_list = self._load_ineps_from_eace()
+
+    def _load_processed_data(self):
+        """Carrega o registro de links/INEPs já processados."""
+        if os.path.exists(self.db_path):
+            try:
+                with open(self.db_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except:
+                return {"links": {}, "ineps": {}}
+        return {"links": {}, "ineps": {}}
+
+    def _save_processed_data(self):
+        """Salva o registro de links/INEPs processados."""
+        try:
+            with open(self.db_path, 'w', encoding='utf-8') as f:
+                json.dump(self.processed_data, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            self._log(f"Erro ao salvar status de processamento: {e}")
+
+    def _load_ineps_from_eace(self):
+        """Lê os INEPs da planilha EACE se fornecida."""
+        if not self.eace_path or not os.path.exists(self.eace_path):
+            return []
+        try:
+            self._log(f"Lendo INEPs da planilha: {os.path.basename(self.eace_path)}")
+            # Tentar ler Excel (precisa de openpyxl)
+            df = pd.read_excel(self.eace_path)
+            # Procurar por coluna que contenha 'INEP' no nome
+            inep_col = [c for c in df.columns if 'INEP' in str(c).upper()]
+            if inep_col:
+                ineps = df[inep_col[0]].dropna().astype(str).tolist()
+                self._log(f"  {len(ineps)} INEPs carregados da planilha EACE.")
+                return ineps
+            else:
+                self._log("  AVISO: Coluna 'INEP' não encontrada na planilha EACE.")
+                return []
+        except Exception as e:
+            self._log(f"  Erro ao ler planilha EACE: {e}")
+            return []
+
+    def _is_already_processed(self, link, inep=None):
+        """Verifica se o link ou INEP já foi processado nesta sessão ou anteriormente."""
+        if link in self.processed_data["links"]:
+            return True
+        if inep and str(inep) in self.processed_data["ineps"]:
+            return True
+        return False
+
+    def _mark_as_processed(self, link, inep=None, info="", all_data=None):
+        """Marca um link/INEP como concluído e atualiza a planilha geral se necessário."""
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # 1. Atualizar banco de dados JSON
+        self.processed_data["links"][link] = {"timestamp": ts, "info": info}
+        is_new_or_unmapped = True
+        
+        if inep:
+            inep_str = str(inep)
+            self.processed_data["ineps"][inep_str] = {"timestamp": ts, "link": link}
+            if inep_str in self.inep_list:
+                is_new_or_unmapped = False
+        
+        self._save_processed_data()
+
+        # 2. Se for um dado novo (não está na EACE) ou sem INEP, adicionar à Planilha Geral
+        if is_new_or_unmapped and all_data:
+            self._update_general_spreadsheet(all_data)
+
+    def _update_general_spreadsheet(self, new_row_data):
+        """Adiciona dados que não estão na EACE à planilha geral."""
+        try:
+            # new_row_data deve ser um dicionário com os dados da linha
+            new_row_data['Data Processamento'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            if os.path.exists(self.general_db_path):
+                df_general = pd.read_excel(self.general_db_path)
+                # Evitar duplicatas na planilha geral baseada no link
+                if 'Link' in df_general.columns and new_row_data.get('Link') in df_general['Link'].values:
+                    return
+                df_new = pd.DataFrame([new_row_data])
+                df_combined = pd.concat([df_general, df_new], ignore_index=True)
+                df_combined.to_excel(self.general_db_path, index=False)
+            else:
+                df_new = pd.DataFrame([new_row_data])
+                df_new.to_excel(self.general_db_path, index=False)
+            
+            self._log(f"  Dado novo registrado na Planilha Geral: {new_row_data.get('Link', 'N/A')}")
+        except Exception as e:
+            self._log(f"  Erro ao atualizar planilha geral: {e}")
 
     # -----------------------------------------------------------------------
     # UTILITÁRIOS
@@ -82,10 +188,14 @@ class OmadaExporter:
         text = f"[{ts}] {msg}"
         if self.on_log:
             self.on_log(text)
+        else:
+            print(text) # Log para console em modo CLI
 
     def _set_status(self, text):
         if self.on_status:
             self.on_status(text)
+        else:
+            self._log(f"STATUS: {text}") # Log para console em modo CLI
 
     def _wait(self, seconds):
         """Aguarda respeitando o flag de parada."""
@@ -108,8 +218,9 @@ class OmadaExporter:
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
         opts.add_argument("--disable-infobars")
+        opts.add_argument("--headless") # Adicionar modo headless para VMs Linux
 
-        # Preferências de download
+        # Preferências de download e segurança
         opts.add_experimental_option("prefs", {
             "download.default_directory": self.download_dir,
             "download.prompt_for_download": False,
@@ -117,12 +228,15 @@ class OmadaExporter:
             "safebrowsing.enabled": True,
             "safebrowsing.disable_download_protection": True,
             "plugins.always_open_pdf_externally": True,
+            # PERMITIR MÚLTIPLOS DOWNLOADS AUTOMATICAMENTE
+            "profile.default_content_setting_values.automatic_downloads": 1,
+            "profile.content_settings.exceptions.automatic_downloads.*.setting": 1
         })
 
         self.driver = webdriver.Chrome(options=opts)
         self.driver.implicitly_wait(15)
-        self.driver.maximize_window()
-        self._log("Browser Chrome inicializado.")
+        # self.driver.maximize_window() # Não faz sentido em modo headless
+        self._log("Browser Chrome inicializado (modo headless).")
 
     def _ensure_driver(self):
         """Garante que o driver está vivo; recria se necessário."""
@@ -244,6 +358,10 @@ class OmadaExporter:
                     self._log(f"Login concluído. URL: {url}")
                     self._set_status("Login realizado.")
                     self.is_logged_in = True
+                    
+                    # --- NOVO: Lidar com o pop-up de aviso regional ("Aviso de Isolamento Regional") ---
+                    self._handle_regional_warning()
+                    
                     return True
                 self._wait(1)
 
@@ -269,6 +387,59 @@ class OmadaExporter:
     # -----------------------------------------------------------------------
     # MUDAR PARA VISUALIZAÇÃO LIST
     # -----------------------------------------------------------------------
+    def _handle_regional_warning(self):
+        """Detecta e fecha o pop-up de aviso regional que aparece após o login (aguarda até 10s)."""
+        driver = self.driver
+        self._log("Aguardando aviso regional (até 10s)...")
+        
+        try:
+            found_ok = False
+            timeout = time.time() + 10
+            
+            while time.time() < timeout and self.running:
+                # Procurar pelo botão OK do aviso
+                ok_selectors = [
+                    "//div[contains(@class, 'ant-modal')]//button[normalize-space()='OK']",
+                    "//button[normalize-space()='OK']",
+                    "//span[normalize-space()='OK']/parent::button",
+                    "//div[contains(@class, 'modal')]//button[contains(., 'OK')]"
+                ]
+                
+                # Verificar se algum botão OK está visível
+                for sel in ok_selectors:
+                    btns = driver.find_elements(By.XPATH, sel)
+                    for btn in btns:
+                        if btn.is_displayed():
+                            # Encontrou o aviso! Tentar marcar "Não me volte a mostrar" primeiro
+                            try:
+                                checkbox = driver.find_elements(By.XPATH, "//span[contains(., 'Não me volte a mostrar')]|//input[@type='checkbox']")
+                                for cb in checkbox:
+                                    if cb.is_displayed():
+                                        driver.execute_script("arguments[0].click();", cb)
+                                        self._log("  Opção 'Não me volte a mostrar' marcada.")
+                                        break
+                            except:
+                                pass
+                            
+                            # Clicar no OK
+                            driver.execute_script("arguments[0].click();", btn)
+                            self._log("  Aviso regional detectado e fechado.")
+                            found_ok = True
+                            break
+                    if found_ok: break
+                
+                if found_ok:
+                    time.sleep(2) # Aguardar animação de fechamento
+                    break
+                
+                time.sleep(1) # Esperar 1s antes da próxima verificação
+            
+            if not found_ok:
+                self._log("  Aviso regional não apareceu nos 10s. Prosseguindo...")
+            
+        except Exception as e:
+            self._log(f"  Erro ao processar aviso regional: {e}")
+
     def _switch_to_list_view(self):
     
         driver = self.driver
@@ -399,62 +570,77 @@ class OmadaExporter:
 
             self._wait(2)
 
-            # --- PASSO 3: Aguardar o pop-up "Dados de exportação" e clicar no botão verde "Exportar" ---
+            # --- PASSO 3: Aguardar o pop-up "Dados de exportação" e configurar as opções ---
             self._log("Aguardando pop-up 'Dados de exportação'...")
 
-            # ESTRATÉGIA DEFINITIVA DE CLIQUE
+            # 1. Selecionar "Todas as Colunas"
+            all_columns_selected = False
+            popup_timeout = time.time() + 20
+            while time.time() < popup_timeout and self.running:
+                try:
+                    # Procurar pelo texto "Todas as Colunas" (pode ser um radio button ou label)
+                    # No Omada, costuma ser um span ou label próximo a um input do tipo radio
+                    selectors = [
+                        "//*[normalize-space()='Todas as Colunas']",
+                        "//span[contains(., 'Todas as Colunas')]",
+                        "//label[contains(., 'Todas as Colunas')]",
+                        "//input[@type='radio' and following-sibling::*[contains(., 'Todas as Colunas')]]"
+                    ]
+                    
+                    for sel in selectors:
+                        els = driver.find_elements(By.XPATH, sel)
+                        for el in els:
+                            if el.is_displayed():
+                                driver.execute_script("arguments[0].click();", el)
+                                self._log("  Opção 'Todas as Colunas' selecionada.")
+                                all_columns_selected = True
+                                break
+                        if all_columns_selected: break
+                    if all_columns_selected: break
+                except:
+                    pass
+                time.sleep(1)
+
+            if not all_columns_selected:
+                self._log("  AVISO: Não foi possível selecionar 'Todas as Colunas'. Prosseguindo com padrão.")
+
+            self._wait(1)
+
+            # 2. Clicar no botão verde "Exportar"
+            self._log("Procurando botão final 'Exportar'...")
             export_final_clicked = False
-            timeout = time.time() + 40
+            timeout = time.time() + 25
             
             while time.time() < timeout and self.running:
                 try:
-                    # 1. Tentar encontrar todos os botões da página
+                    # Tentar encontrar todos os botões e links
                     all_buttons = driver.find_elements(By.TAG_NAME, "button")
                     all_links = driver.find_elements(By.TAG_NAME, "a")
                     all_elements = all_buttons + all_links
                     
-                    # 2. Filtrar elementos que contenham "Exportar" e estejam visíveis
                     candidates = []
                     for el in all_elements:
                         try:
                             text = el.text or el.get_attribute("innerText") or ""
                             if "Exportar" in text and el.is_displayed():
-                                # Obter localização para priorizar o botão que parece ser o do pop-up
-                                # Botões de pop-up costumam estar mais para o centro/baixo da tela
                                 rect = el.rect
-                                candidates.append({
-                                    'element': el,
-                                    'y': rect['y'],
-                                    'x': rect['x'],
-                                    'text': text
-                                })
+                                candidates.append({'element': el, 'y': rect['y'], 'text': text})
                         except:
                             continue
                     
                     if candidates:
-                        # Priorizar o botão que está mais abaixo (o do pop-up costuma estar abaixo do da toolbar)
+                        # Priorizar o botão que está mais abaixo (o do pop-up)
                         candidates.sort(key=lambda c: c['y'], reverse=True)
-                        
                         target = candidates[0]['element']
-                        self._log(f"  Candidato encontrado: '{candidates[0]['text']}' em y={candidates[0]['y']}")
                         
-                        # Tentar múltiplos métodos de clique no candidato mais provável
-                        try:
-                            # Método A: JavaScript (ignora sobreposições)
-                            driver.execute_script("arguments[0].scrollIntoView(true);", target)
-                            driver.execute_script("arguments[0].click();", target)
-                        except:
-                            # Método B: Clique direto do Selenium
-                            try:
-                                target.click()
-                            except:
-                                pass
+                        driver.execute_script("arguments[0].scrollIntoView(true);", target)
+                        driver.execute_script("arguments[0].click();", target)
                         
-                        self._log("  Comando de clique enviado ao botão do pop-up.")
+                        self._log(f"  Botão '{candidates[0]['text']}' clicado.")
                         export_final_clicked = True
                         break
                 except Exception as e:
-                    self._log(f"  Tentativa falhou: {e}")
+                    self._log(f"  Erro ao clicar no botão final: {e}")
                 
                 time.sleep(1.5)
 
@@ -544,22 +730,31 @@ class OmadaExporter:
         return False
 
     def _rename_to_target(self, source, target):
-        """Remove o destino antigo e renomeia/copiar o novo arquivo."""
+        """Remove o destino antigo e renomeia/copiar o novo arquivo para manter a base de dados única."""
         try:
+            # Forçar a remoção do arquivo antigo se ele existir
             if os.path.exists(target):
                 try:
                     os.remove(target)
-                except PermissionError:
-                    pass  # Se não conseguir remover, sobrescrever via copy
+                    self._log(f"  Base de dados antiga removida para atualização.")
+                except Exception as e:
+                    self._log(f"  Aviso ao remover base antiga: {e}")
+            
+            # Tentar renomear o novo arquivo para o nome de destino (sobrescrevendo)
             try:
-                os.rename(source, target)
-                self._log(f"Arquivo salvo: {os.path.basename(target)}")
-            except PermissionError:
+                # Usar shutil.move que é mais robusto para sobrescrever e lidar com diferentes sistemas de arquivos
+                import shutil
+                shutil.move(source, target)
+                self._log(f"  BASE DE DADOS ATUALIZADA: {os.path.basename(target)}")
+            except Exception as e:
+                self._log(f"  Erro ao mover arquivo: {e}. Tentando cópia direta.")
+                import shutil
                 shutil.copy2(source, target)
                 os.remove(source)
-                self._log(f"Arquivo copiado: {os.path.basename(target)}")
+                self._log(f"  BASE DE DADOS COPIADA: {os.path.basename(target)}")
+                
         except Exception as e:
-            self._log(f"ERRO ao renomear/copiar: {e}")
+            self._log(f"ERRO CRÍTICO ao atualizar base de dados: {e}")
 
     # -----------------------------------------------------------------------
     # LOOP PRINCIPAL
@@ -576,6 +771,10 @@ class OmadaExporter:
         self._log("=" * 50)
 
         try:
+            # Carregar dados antes de iniciar
+            self.processed_data = self._load_processed_data()
+            self.inep_list = self._load_ineps_from_eace()
+            
             # Inicializar browser e fazer login
             self._ensure_driver()
             if not self._do_login():
@@ -735,6 +934,17 @@ class ExporterApp:
         cfg = ttk.LabelFrame(main, text=" Configurações de Conexão ", padding=12)
         cfg.pack(fill=tk.X, pady=(0, 10))
 
+        # --- NOVO: Planilha EACE ---
+        eace_frame = ttk.LabelFrame(main, text=" Planilha EACE (Opcional para filtro de INEP) ", padding=12)
+        eace_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.var_eace = tk.StringVar(value="")
+        dir_eace = ttk.Frame(eace_frame)
+        dir_eace.pack(fill=tk.X)
+        ttk.Entry(dir_eace, textvariable=self.var_eace, width=40).pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
+        ttk.Button(dir_eace, text="📂", command=self._browse_eace).pack(side=tk.LEFT)
+
         r = 0
         ttk.Label(cfg, text="E-mail:").grid(row=r, column=0, sticky=tk.W, pady=4, padx=8)
         self.var_email = tk.StringVar(value=DEFAULT_EMAIL)
@@ -819,6 +1029,14 @@ class ExporterApp:
         if d:
             self.var_dir.set(d)
 
+    def _browse_eace(self):
+        f = filedialog.askopenfilename(
+            title="Selecionar Planilha EACE",
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+        )
+        if f:
+            self.var_eace.set(f)
+
     def _log(self, msg):
         """Envia mensagem de log para a thread principal."""
         self.root.after(0, lambda m=msg: self._append_log(m))
@@ -869,6 +1087,7 @@ class ExporterApp:
             interval=interval,
             download_dir=ddir,
             filename=self.var_file.get(),
+            eace_path=self.var_eace.get()
         )
         self.exporter.on_log = self._log
         self.exporter.on_status = self._on_status
@@ -918,9 +1137,61 @@ class ExporterApp:
 # ============================================================================
 # MAIN
 # ============================================================================
-def main():
+def run_cli_mode(args):
+    """Executa o exportador em modo CLI (sem interface gráfica Tkinter)."""
+    email = args.email or os.getenv("OMADA_EMAIL", DEFAULT_EMAIL)
+    password = args.password or os.getenv("OMADA_PASSWORD", DEFAULT_PASSWORD)
+    interval = args.interval or int(os.getenv("OMADA_INTERVAL", DEFAULT_INTERVAL))
+    download_dir = args.dir or os.getenv("OMADA_DIR", get_default_download_dir())
+
     print("=" * 60)
-    print("  Omada Cloud Data Exporter v2.0")
+    print("  Omada Cloud Data Exporter v2.0 (MODO CLI / DOCKER)")
+    print("=" * 60)
+    print(f"E-mail:    {email}")
+    print(f"Intervalo: {interval}s")
+    print(f"Diretório: {download_dir}")
+    print("=" * 60)
+
+    exporter = OmadaExporter(
+        email=email,
+        password=password,
+        interval=interval,
+        download_dir=download_dir,
+        filename=DEFAULT_FILENAME
+    )
+
+    def cli_log(msg):
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
+
+    exporter.on_log = cli_log
+    exporter.start()
+
+    try:
+        while exporter.running:
+            time.sleep(1)
+    except (KeyboardInterrupt, SystemExit):
+        print("\nInterrupção recebida. Parando exportador CLI...")
+        exporter.stop()
+        print("Exportador CLI encerrado.")
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Omada Cloud Data Exporter")
+    parser.add_argument("--cli", action="store_true", help="Rodar em modo terminal (sem janela gráfica)")
+    parser.add_argument("--email", type=str, help="E-mail de login")
+    parser.add_argument("--password", type=str, help="Senha de login")
+    parser.add_argument("--interval", type=int, help="Intervalo em segundos entre exportações")
+    parser.add_argument("--dir", type=str, help="Diretório de saída para os relatórios XLSX")
+    args, _ = parser.parse_known_args()
+
+    # Se --cli for passado OU a variável de ambiente OMADA_CLI=true estiver setada OU tkinter não estiver disponível
+    if args.cli or str(os.getenv("OMADA_CLI", "")).lower() in ("true", "1", "yes") or not TKINTER_AVAILABLE:
+        run_cli_mode(args)
+        return
+
+    print("=" * 60)
+    print("  Omada Cloud Data Exporter v2.0 (MODO GUI)")
     print("  Python:", sys.version.split()[0])
     print("=" * 60)
     print()
@@ -940,3 +1211,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
