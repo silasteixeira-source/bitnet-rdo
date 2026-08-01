@@ -1,0 +1,13 @@
+services:
+  omada-exporter:
+    build: .
+    container_name: omada_exporter_service
+    restart: unless-stopped
+    environment:
+      - OMADA_CLI=true
+      - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
+      - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
+      - OMADA_INTERVAL=${OMADA_INTERVAL:-30}
+      - OMADA_DIR=/app/dados_omada
+    volumes:
+      - ./dados_omada:/app/dados_omada
