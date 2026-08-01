@@ -148,13 +148,17 @@ class EACEOSExporter:
             botoes = self.driver.find_elements(By.XPATH, "//button | //input[@type='submit'] | //*[@role='button'] | //a[contains(@class, 'btn')]")
             self.log(f"Botões detectados na tela de login: {[b.text.strip() or str(b.get_attribute('value')) for b in botoes]}")
             clicado = False
+            # 1. Prioridade máxima: Botões cujo texto ou value seja explicitamente de login/acesso
             for b in botoes:
-                txt = (b.text or str(b.get_attribute("value")) or "").lower()
-                if any(k in txt for k in ["log in", "login", "entrar", "acessar", "sign in", "continuar", "próximo", "avançar"]) or b.get_attribute("type") == "submit":
+                txt = (b.text or str(b.get_attribute("value") or "") or str(b.get_attribute("aria-label") or "")).strip()
+                txt_lower = txt.lower()
+                if not txt_lower:
+                    continue
+                if any(k in txt_lower for k in ["log in", "login", "entrar", "acessar", "sign in", "continuar", "próximo", "avançar"]):
                     try:
                         self.driver.execute_script("arguments[0].click();", b)
                         clicado = True
-                        self.log(f" -> Botão de login clicado: '{txt}'")
+                        self.log(f" -> Botão de login clicado (por texto): '{txt}'")
                         break
                     except Exception:
                         try:
@@ -164,19 +168,24 @@ class EACEOSExporter:
                             break
                         except Exception:
                             pass
-            if not clicado and botoes:
-                try:
-                    self.driver.execute_script("arguments[0].click();", botoes[0])
-                    self.log(" -> Clique de fallback executado no primeiro botão da página.")
-                except Exception:
-                    pass
+            # 2. Fallback: se nenhum botão com texto explícito foi clicado, tenta botão com type='submit'
+            if not clicado:
+                for b in botoes:
+                    if b.get_attribute("type") == "submit":
+                        try:
+                            self.driver.execute_script("arguments[0].click();", b)
+                            clicado = True
+                            self.log(" -> Botão submit (fallback) clicado.")
+                            break
+                        except Exception:
+                            pass
 
             time.sleep(12)
             self.log(f"URL após Log In: {self.driver.current_url}")
             if "login" in self.driver.current_url.lower():
                 try:
                     corpo_txt = self.driver.find_element(By.TAG_NAME, "body").text
-                    alertas = [linha for linha in corpo_txt.split("\n") if any(w in linha.lower() for w in ["erro", "inválid", "senha", "credencial", "falha", "obrigatório", "captcha"])]
+                    alertas = [linha for linha in corpo_txt.split("\n") if any(w in linha.lower() for w in ["erro", "inválid", "incorret", "credencial", "falha", "obrigatório", "captcha", "bloquead"])]
                     if alertas:
                         self.log(f" -> Avisos detectados na tela de login: {alertas}")
                 except Exception:
