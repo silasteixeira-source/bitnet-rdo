@@ -8,4 +8,4 @@ services:
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
     volumes:
       - ./dados_eace:/app/dados_eace
-    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "3600"]
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "600"]

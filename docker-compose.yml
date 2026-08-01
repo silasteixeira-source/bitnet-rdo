@@ -21,7 +21,7 @@ services:
     environment:
       - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
-      - EACE_INTERVAL=${EACE_INTERVAL:-3600}
+      - EACE_INTERVAL=${EACE_INTERVAL:-600}
     volumes:
       - ./eace/dados_eace:/app/dados_eace
-    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "3600"]
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "600"]
