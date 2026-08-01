@@ -90,7 +90,7 @@ class EACEOSExporter:
         opts.add_argument("--no-first-run")
         opts.add_argument("--mute-audio")
         opts.add_argument("--disk-cache-size=1")
-        opts.add_argument("--window-size=1280,720")
+        opts.add_argument("--window-size=1920,1080")
 
         prefs = {
             "download.default_directory": TEMP_DOWNLOAD_DIR,
@@ -119,12 +119,7 @@ class EACEOSExporter:
                 elif t == "password":
                     inp.clear()
                     inp.send_keys(self.password)
-
-            # Clicar botão de Log In
-            for b in self.driver.find_elements(By.TAG_NAME, "button"):
-                txt = b.text.lower()
-                if "log in" in txt or "login" in txt or "entrar" in txt:
-                    b.click()
+                    inp.send_keys(Keys.RETURN)
                     break
 
             time.sleep(10)
@@ -172,7 +167,7 @@ class EACEOSExporter:
             buttons = []
             for btn in self.driver.find_elements(By.TAG_NAME, "button"):
                 r = btn.rect
-                if r["x"] > 1750 and 130 < r["y"] < 180 and r["width"] < 50:
+                if r["x"] > 1500 and 100 < r["y"] < 250 and r["width"] < 60:
                     buttons.append((r["x"], btn))
             buttons.sort(key=lambda item: item[0])
 
