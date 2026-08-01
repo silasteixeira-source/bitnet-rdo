@@ -233,8 +233,8 @@ def main():
 
     if intervalo > 0:
         print(f"[EACE Exporter] Modo contínuo ativado (intervalo: {intervalo}s).")
-        print("[EACE Exporter] Aguardando 30s de delay inicial para evitar colisão com o Omada Exporter na VPS...")
-        time.sleep(30)
+        print("[EACE Exporter] Aguardando 240s (4 min) de delay inicial para que o Omada Exporter termine na VPS...")
+        time.sleep(240)
         while True:
             exporter.run()
             time.sleep(intervalo)
