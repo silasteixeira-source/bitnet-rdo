@@ -25,5 +25,5 @@ COPY eace_os_exporter.py .
 # Volume persistente para salvar a planilha em dados_eace na VPS
 VOLUME ["/app/dados_eace"]
 
-# Comando padrão: executa a cada 3600 segundos (1 hora) por padrão
-CMD ["python", "-u", "eace_os_exporter.py", "--intervalo", "3600"]
+# Comando padrão: executa a cada 600 segundos (10 minutos) por padrão
+CMD ["python", "-u", "eace_os_exporter.py", "--intervalo", "600"]
