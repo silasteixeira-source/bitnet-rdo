@@ -111,20 +111,37 @@ class EACEOSExporter:
             time.sleep(5)
 
             # Preencher credenciais
+            email_preenchido = False
+            senha_preenchida = False
             for inp in self.driver.find_elements(By.TAG_NAME, "input"):
-                t = inp.get_attribute("type")
+                t = (inp.get_attribute("type") or "").lower()
+                name = (inp.get_attribute("name") or "").lower()
+                id_attr = (inp.get_attribute("id") or "").lower()
                 placeholder = (inp.get_attribute("placeholder") or "").lower()
-                if t == "email" or "email" in placeholder:
-                    inp.clear()
-                    inp.send_keys(self.email)
-                elif t == "password":
-                    inp.clear()
-                    inp.send_keys(self.password)
+                
+                if not email_preenchido and (t == "email" or any(k in name or k in id_attr or k in placeholder for k in ["email", "e-mail", "user", "usuari", "login", "cpf", "cnpj"]) or (t == "text" and not email_preenchido)):
                     try:
+                        inp.clear()
+                        inp.send_keys(self.email)
+                        email_preenchido = True
+                        self.log(f" -> Campo de usuário/e-mail preenchido: {self.email}")
+                    except Exception:
+                        pass
+                elif t == "password" and not senha_preenchida:
+                    try:
+                        inp.clear()
+                        inp.send_keys(self.password)
+                        senha_preenchida = True
+                        self.log(" -> Campo de senha preenchido.")
                         inp.send_keys(Keys.RETURN)
                     except Exception:
                         pass
                     break
+
+            if not email_preenchido:
+                self.log("❌ AVISO: Não foi detectado campo de e-mail/usuário na tela de login!")
+            if not senha_preenchida:
+                self.log("❌ AVISO: Não foi detectado campo de senha na tela de login!")
 
             time.sleep(2)
             # Garantir clique explícito no botão de Log In / Entrar / Acessar via JS
