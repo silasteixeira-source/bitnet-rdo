@@ -77,9 +77,20 @@ class EACEOSExporter:
         opts.add_argument("--disable-extensions")
         opts.add_argument("--remote-debugging-pipe")
         opts.add_argument("--remote-allow-origins=*")
-        opts.add_argument("--js-flags=--max-old-space-size=256")
+        opts.add_argument("--js-flags=--max-old-space-size=512")
+        opts.add_argument("--disable-site-isolation-trials")
+        opts.add_argument("--disable-features=IsolateOrigins,site-per-process,Translate,BackForwardCache")
+        opts.add_argument("--disable-background-timer-throttling")
+        opts.add_argument("--disable-renderer-backgrounding")
+        opts.add_argument("--disable-breakpad")
+        opts.add_argument("--disable-component-update")
+        opts.add_argument("--disable-domain-reliability")
+        opts.add_argument("--disable-sync")
+        opts.add_argument("--metrics-recording-only")
+        opts.add_argument("--no-first-run")
+        opts.add_argument("--mute-audio")
         opts.add_argument("--disk-cache-size=1")
-        opts.add_argument("--window-size=1920,1080")
+        opts.add_argument("--window-size=1280,720")
 
         prefs = {
             "download.default_directory": TEMP_DOWNLOAD_DIR,
