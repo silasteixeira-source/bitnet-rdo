@@ -1,21 +1,14 @@
-# Dockerfile para o Robô EACE OS Exporter (RI) em VPS Linux sem interface gráfica
+# Dockerfile para o Robô EACE OS Exporter (RI) em VPS Linux sem interface gráfica (Otimizado para VPS 1GB RAM)
 FROM python:3.11-slim
 
 # Variáveis de ambiente para o Chromium Headless
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-# Instalar Chromium, Chromedriver e dependências do sistema necessárias
+# Instalar Chromium, Chromedriver e certificados (sem pacotes legados/descontinuados no Debian 13)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     chromium-driver \
-    libglib2.0-0 \
-    libnss3 \
-    libgconf-2-4 \
-    libfontconfig1 \
-    libxrender1 \
-    libxtst6 \
-    libxi6 \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
