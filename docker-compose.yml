@@ -5,6 +5,7 @@ services:
     container_name: rdo_omada_exporter
     restart: unless-stopped
     environment:
+      - TZ=America/Sao_Paulo
       - OMADA_CLI=true
       - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
@@ -19,6 +20,7 @@ services:
     container_name: rdo_eace_os_exporter
     restart: unless-stopped
     environment:
+      - TZ=America/Sao_Paulo
       - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
       - EACE_INTERVAL=${EACE_INTERVAL:-300}
