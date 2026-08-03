@@ -229,26 +229,36 @@ class EACEOSExporter:
         """
         try:
             self.log("Buscando botão de exportação da planilha RI (Rede Interna)...")
-            # Mapear os botões de ícone da barra superior direita com maior tolerância de coordenadas
+            # Mapear os botões de ícone da barra superior direita (X > 1600 para ignorar filtros centrais)
             buttons = []
             for btn in self.driver.find_elements(By.TAG_NAME, "button"):
                 try:
                     r = btn.rect
-                    if r["x"] > 1100 and r["y"] < 350 and r["width"] < 80:
+                    if r["x"] > 1600 and r["y"] < 350 and r["width"] < 80:
                         buttons.append((r["x"], btn))
                 except Exception:
                     pass
             buttons.sort(key=lambda item: item[0])
-            self.log(f" -> Botões de ícone detectados na barra superior: {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
+            self.log(f" -> Botões de ícone detectados no topo direito (X > 1600): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
 
-            if not buttons:
+            alvo_btn = None
+            for _, btn in buttons:
+                attr_txt = f"{btn.get_attribute('title') or ''} {btn.get_attribute('aria-label') or ''} {btn.get_attribute('class') or ''}".lower()
+                if any(w in attr_txt for w in ["ri", "rede", "excel", "xlsx", "export", "download", "baixar"]):
+                    alvo_btn = btn
+                    self.log(f" -> Botão RI identificado por atributo/classe: '{attr_txt}'")
+                    break
+
+            if not alvo_btn and buttons:
+                alvo_btn = buttons[0][1]
+                self.log(f" -> Usando primeiro botão da barra superior direita (X={int(buttons[0][0])}).")
+
+            if not alvo_btn:
                 self.log("❌ Erro: Botão de download do RI não encontrado na barra superior direita.")
                 return False
 
-            # O primeiro botão na barra corresponde ao RI
-            x_pos, btn_element = buttons[0]
-            self.log(f" -> Clicando no botão de download RI (X={int(x_pos)}) via JS...")
-            self.driver.execute_script("arguments[0].click();", btn_element)
+            self.log(" -> Clicando no botão de download RI via JS...")
+            self.driver.execute_script("arguments[0].click();", alvo_btn)
 
             # Aguardar o novo arquivo na pasta temporária
             timeout = 45
