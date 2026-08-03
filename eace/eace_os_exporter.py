@@ -229,52 +229,42 @@ class EACEOSExporter:
         """
         try:
             self.log("Buscando botão de exportação da planilha RI (Rede Interna)...")
-            # Mapear os botões de ícone da barra superior direita (X > 1600 para ignorar filtros centrais)
+            # Mapear os botões da barra de ferramentas superior onde ficam RI (X ≈ 1180) e RE (X ≈ 1210)
             buttons = []
             for btn in self.driver.find_elements(By.TAG_NAME, "button"):
                 try:
                     r = btn.rect
-                    if r["x"] > 1600 and r["y"] < 350 and r["width"] < 80:
+                    if 1100 <= r["x"] <= 1550 and r["y"] < 350 and r["width"] < 80:
                         buttons.append((r["x"], btn))
                 except Exception:
                     pass
             buttons.sort(key=lambda item: item[0])
-            self.log(f" -> Botões de ícone detectados no topo direito (X > 1600): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
+            self.log(f" -> Botões de exportação (RI/RE) detectados (1100 <= X <= 1550): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
 
-            alvo_btn = None
-            for _, btn in buttons:
-                attr_txt = f"{btn.get_attribute('title') or ''} {btn.get_attribute('aria-label') or ''} {btn.get_attribute('class') or ''}".lower()
-                if any(w in attr_txt for w in ["ri", "rede", "excel", "xlsx", "export", "download", "baixar"]):
-                    alvo_btn = btn
-                    self.log(f" -> Botão RI identificado por atributo/classe: '{attr_txt}'")
-                    break
-
-            if not alvo_btn and buttons:
-                alvo_btn = buttons[0][1]
-                self.log(f" -> Usando primeiro botão da barra superior direita (X={int(buttons[0][0])}).")
-
-            if not alvo_btn:
-                self.log("❌ Erro: Botão de download do RI não encontrado na barra superior direita.")
+            if not buttons:
+                self.log("❌ Erro: Nenhum botão de download (RI/RE) encontrado na faixa X ≈ 1180-1210.")
                 return False
 
-            self.log(" -> Clicando no botão de download RI via JS...")
+            # O primeiro botão na faixa (menor X, ≈ 1180) é o da planilha RI
+            x_pos, alvo_btn = buttons[0]
+            self.log(f" -> Clicando no botão da Planilha RI (X={int(x_pos)}) via JS execute_script...")
             self.driver.execute_script("arguments[0].click();", alvo_btn)
 
-            # Aguardar o novo arquivo na pasta temporária
-            timeout = 45
+            # Aguardar o novo arquivo na pasta temporária (aumentado para 120s para servidores lentos do Bubble.io)
+            timeout = 120
             inicio = time.time()
             arquivo_baixado = None
 
             while time.time() - inicio < timeout:
-                files = glob.glob(os.path.join(TEMP_DOWNLOAD_DIR, "*.xlsx"))
-                if files and not any(f.endswith(".crdownload") for f in glob.glob(os.path.join(TEMP_DOWNLOAD_DIR, "*"))):
+                files = [f for f in glob.glob(os.path.join(TEMP_DOWNLOAD_DIR, "*.*")) if not f.endswith(".crdownload") and not f.endswith(".tmp")]
+                if files:
                     files_sorted = sorted(files, key=os.path.getmtime, reverse=True)
                     arquivo_baixado = files_sorted[0]
                     break
                 time.sleep(2)
 
             if not arquivo_baixado:
-                self.log("Timeout ao aguardar download da planilha RI.")
+                self.log("❌ Timeout (120s) ao aguardar download da planilha RI gerada pelo Bubble.io.")
                 return False
 
             # Sobrescrever arquivo destino em dados_eace/controle_os_ri.xlsx
