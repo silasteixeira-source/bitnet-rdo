@@ -91,7 +91,7 @@ class EACEOSExporter:
         opts.add_argument("--no-first-run")
         opts.add_argument("--mute-audio")
         opts.add_argument("--disk-cache-size=1")
-        opts.add_argument("--window-size=1920,1080")
+        opts.add_argument("--window-size=1280,720")
 
         prefs = {
             "download.default_directory": TEMP_DOWNLOAD_DIR,
@@ -231,18 +231,21 @@ class EACEOSExporter:
             self.log("Buscando botão de exportação da planilha RI (Rede Interna)...")
             # Mapear os botões da barra de ferramentas superior onde ficam RI (X ≈ 1180) e RE (X ≈ 1210)
             buttons = []
-            for btn in self.driver.find_elements(By.TAG_NAME, "button"):
+            todos_botoes = self.driver.find_elements(By.TAG_NAME, "button")
+            for btn in todos_botoes:
                 try:
                     r = btn.rect
-                    if 1100 <= r["x"] <= 1550 and r["y"] < 350 and r["width"] < 80:
+                    # Em resolução 1280x720, os botões RI (≈1180) e RE (≈1210) ficam entre 1050 <= X <= 1270 e Y < 450
+                    if 1050 <= r["x"] <= 1270 and r["y"] < 450:
                         buttons.append((r["x"], btn))
                 except Exception:
                     pass
             buttons.sort(key=lambda item: item[0])
-            self.log(f" -> Botões de exportação (RI/RE) detectados (1100 <= X <= 1550): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
+            self.log(f" -> Botões de exportação (RI/RE) detectados (1050 <= X <= 1270): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
 
             if not buttons:
-                self.log("❌ Erro: Nenhum botão de download (RI/RE) encontrado na faixa X ≈ 1180-1210.")
+                coord_todos = [int(b.rect["x"]) for b in todos_botoes if b.rect["y"] < 450]
+                self.log(f"❌ Erro: Nenhum botão (RI/RE) encontrado na faixa X ≈ 1180-1210. Todos os botões em Y<450 na página: X={coord_todos}")
                 return False
 
             # O primeiro botão na faixa (menor X, ≈ 1180) é o da planilha RI
