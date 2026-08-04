@@ -235,22 +235,24 @@ class EACEOSExporter:
             for btn in todos_botoes:
                 try:
                     r = btn.rect
-                    # Em resolução 1280x720, os botões RI (≈1180) e RE (≈1210) ficam entre 1050 <= X <= 1270 e Y < 450
-                    if 1050 <= r["x"] <= 1270 and r["y"] < 450:
+                    # Em resolução 1280x720, os botões RI (≈1180) e RE (≈1210) ficam perto de X=1180 e X=1210
+                    if 1150 <= r["x"] <= 1250 and r["y"] < 450:
                         buttons.append((r["x"], btn))
                 except Exception:
                     pass
             buttons.sort(key=lambda item: item[0])
-            self.log(f" -> Botões de exportação (RI/RE) detectados (1050 <= X <= 1270): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
+            self.log(f" -> Botões de exportação (RI/RE) detectados (1150 <= X <= 1250): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
 
             if not buttons:
                 coord_todos = [int(b.rect["x"]) for b in todos_botoes if b.rect["y"] < 450]
                 self.log(f"❌ Erro: Nenhum botão (RI/RE) encontrado na faixa X ≈ 1180-1210. Todos os botões em Y<450 na página: X={coord_todos}")
                 return False
 
-            # O primeiro botão na faixa (menor X, ≈ 1180) é o da planilha RI
-            x_pos, alvo_btn = buttons[0]
-            self.log(f" -> Clicando no botão da Planilha RI (X={int(x_pos)}) via JS execute_script...")
+            # Selecionar cirurgicamente o botão com X mais próximo de 1180 (RI)
+            melhor_item = min(buttons, key=lambda item: abs(item[0] - 1180))
+            x_pos, alvo_btn = melhor_item
+            self.log(f" -> Botão RI selecionado: X={int(x_pos)} (mais próximo de 1180)")
+            self.log(f" -> Clicando no botão da Planilha RI via JS execute_script...")
             self.driver.execute_script("arguments[0].click();", alvo_btn)
 
             # Aguardar o novo arquivo na pasta temporária (aumentado para 120s para servidores lentos do Bubble.io)
