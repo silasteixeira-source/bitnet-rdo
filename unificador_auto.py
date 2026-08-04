@@ -248,6 +248,22 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     if not df_recuperadas.empty:
         df_recuperadas['INEP_Extraido'] = df_recuperadas[name_old].astype(str).str.extract(r'(\d{6,})')[0]
 
+    # --- FILTRO ANTI-FALSO-OFFLINE E DEDUPLICAÇÃO DE INEPs ---
+    # 1. Identifica qualquer INEP que possua pelo menos uma controladora ONLINE no Omada Atual
+    df_online_tmp = df_new[~df_new[status_new].astype(str).str.upper().str.contains('OFFLINE', na=False)].copy()
+    df_online_tmp['INEP_Extraido'] = df_online_tmp[name_new].astype(str).str.extract(r'(\d{6,})')[0]
+    ineps_online_now = set(df_online_tmp['INEP_Extraido'].dropna().astype(str).str.strip())
+    
+    # 2. Exclui de df_offline qualquer controladora offline cujo INEP já esteja ONLINE (ex: OC200 antiga inativa no cloud)
+    inep_series_off = df_offline['INEP_Extraido'].astype(str).str.strip()
+    removidos_online = df_offline[inep_series_off.isin(ineps_online_now)]
+    if not removidos_online.empty:
+        log(f"⚡ Filtro Anti-Falso-Offline: {len(removidos_online)} controladoras offline ignoradas porque o INEP já está ONLINE no Omada (ex: {list(removidos_online['INEP_Extraido'].unique())[:5]}).")
+    df_offline = df_offline[~inep_series_off.isin(ineps_online_now)].copy()
+
+    # 3. Deduplica df_offline por INEP_Extraido (caso exista mais de 1 controladora offline para o mesmo INEP)
+    df_offline = df_offline.drop_duplicates(subset=['INEP_Extraido'], keep='first').copy()
+
     log("2/4 - Validando INEPs contra a planilha RDO...")
     df_rdo = carregar_rdo(rdo_path, client)
     if 'INEP' in df_rdo.columns:
