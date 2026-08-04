@@ -24,10 +24,14 @@ SCOPES = [
 # URLs padrões do Google Sheets (aba 4 do Streamlit)
 DEFAULT_BITNET_URL = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
 DEFAULT_ST1_URL = "https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit"
+DEFAULT_OMADA_GSHEET_URL = "https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036"
 
 def log(msg):
     ts = datetime.now(FUSO_BR).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{ts}] [Unificador Auto] {msg}", flush=True)
+    try:
+        print(f"[{ts}] [Unificador Auto] {msg}", flush=True)
+    except UnicodeEncodeError:
+        print(f"[{ts}] [Unificador Auto] " + msg.encode("ascii", "replace").decode("ascii"), flush=True)
 
 def get_gspread_client():
     """Autentica no Google Sheets via segredos do Streamlit (.streamlit/secrets.toml) ou arquivo JSON."""
@@ -84,6 +88,32 @@ def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
         worksheet.update([df_str.columns.values.tolist()] + df_str.values.tolist())
     else:
         worksheet.update([["Nenhum dado encontrado"]])
+
+def sincronizar_omada_google(client, url_omada, df_omada):
+    """Atualiza a planilha completa do Omada no Google Sheets."""
+    if not client:
+        log("❌ Cliente GSpread não autenticado. Sincronização do Omada abortada.")
+        return
+    log(f"Sincronizando planilha completa do Omada com o Google Sheets: {url_omada}")
+    try:
+        sheet = client.open_by_url(url_omada)
+        try:
+            ws = sheet.get_worksheet_by_id(998874036)
+            if not ws:
+                ws = sheet.sheet1
+        except Exception:
+            ws = sheet.sheet1
+        
+        ws.clear()
+        df_clean = df_omada.drop(columns=['NOME_CLEAN'], errors='ignore')
+        if not df_clean.empty:
+            df_str = df_clean.fillna("").astype(str)
+            ws.update([df_str.columns.values.tolist()] + df_str.values.tolist())
+        else:
+            ws.update([["Nenhum dado encontrado"]])
+        log(f"✅ Planilha completa do Omada sincronizada no Google Sheets ({len(df_clean)} controladoras)!")
+    except Exception as e:
+        log(f"❌ Erro ao atualizar planilha do Omada no Google Sheets: {e}")
 
 def carregar_rdo(rdo_input, client):
     """Carrega a planilha RDO a partir de URL do Google Sheets/Drive (suporta planilhas nativas e arquivos Excel .xlsx no Drive) ou arquivo Excel local."""
@@ -170,7 +200,7 @@ def sort_by_uptime(df, status_col):
     df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
     return df
 
-def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_google=True, gsheet_url=DEFAULT_BITNET_URL):
+def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_google=True, gsheet_url=DEFAULT_BITNET_URL, omada_gsheet_url=DEFAULT_OMADA_GSHEET_URL):
     """Executa o cruzamento completo de dados e publica nas abas do Google Sheets."""
     log("=== Iniciando Processamento do Unificador de Chamados ===")
     
@@ -330,6 +360,10 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
             update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
             log("✅ Sincronização Google Sheets concluída com sucesso!")
+            
+            # Novo: Sincronizar planilha completa do Omada no link especificado pelo usuário
+            if omada_gsheet_url:
+                sincronizar_omada_google(client, omada_gsheet_url, df_new)
         except Exception as e:
             log(f"❌ Erro ao atualizar o Google Sheets: {e}")
     elif sync_google and not client:
@@ -344,6 +378,7 @@ def main():
     parser.add_argument("--os", type=str, default="eace/dados_eace/controle_os_ri.xlsx", help="Caminho para controle_os_ri.xlsx")
     parser.add_argument("--rdo", type=str, default="https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129", help="URL do Google Sheets do RDO ou caminho para arquivo Excel local")
     parser.add_argument("--url", type=str, default=DEFAULT_BITNET_URL, help="URL da planilha Google de destino")
+    parser.add_argument("--omada-url", type=str, default=DEFAULT_OMADA_GSHEET_URL, help="URL da planilha Google do Omada")
     parser.add_argument("--no-sync", action="store_true", help="Não sincronizar com Google Sheets")
     parser.add_argument("--intervalo", type=int, default=0, help="Intervalo em segundos para repetição contínua (0 = apenas uma vez)")
     args = parser.parse_args()
@@ -398,7 +433,8 @@ def main():
                             os_path=args.os,
                             rdo_path=rdo_path,
                             sync_google=(not args.no_sync),
-                            gsheet_url=args.url
+                            gsheet_url=args.url,
+                            omada_gsheet_url=args.omada_url
                         )
                         if sucesso:
                             last_mtime_omada = os.path.getmtime(args.new)
@@ -422,7 +458,8 @@ def main():
             os_path=args.os,
             rdo_path=rdo_path,
             sync_google=(not args.no_sync),
-            gsheet_url=args.url
+            gsheet_url=args.url,
+            omada_gsheet_url=args.omada_url
         )
 
 if __name__ == "__main__":
