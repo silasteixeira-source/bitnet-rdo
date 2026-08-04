@@ -86,24 +86,58 @@ def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
         worksheet.update([["Nenhum dado encontrado"]])
 
 def carregar_rdo(rdo_input, client):
-    """Carrega a planilha RDO a partir de URL do Google Sheets ou arquivo Excel local."""
+    """Carrega a planilha RDO a partir de URL do Google Sheets/Drive (suporta planilhas nativas e arquivos Excel .xlsx no Drive) ou arquivo Excel local."""
     if str(rdo_input).startswith("http://") or str(rdo_input).startswith("https://"):
-        log(f"Carregando RDO direto do Google Sheets: {rdo_input}")
+        log(f"Carregando RDO direto do Google Sheets/Drive: {rdo_input}")
         if not client:
             raise ValueError("Cliente GSpread não autenticado para ler RDO do Google Sheets.")
-        sheet = client.open_by_url(rdo_input)
+        
+        # 1. Tentar como planilha nativa do Google Sheets via gspread
         try:
-            ws = sheet.get_worksheet_by_id(1631182129)
-            if not ws:
+            sheet = client.open_by_url(rdo_input)
+            try:
+                ws = sheet.get_worksheet_by_id(1631182129)
+                if not ws:
+                    ws = sheet.sheet1
+            except Exception:
                 ws = sheet.sheet1
-        except Exception:
-            ws = sheet.sheet1
-        data = ws.get_all_values()
-        if len(data) > 1:
-            df_rdo = pd.DataFrame(data[1:], columns=data[0])
-        else:
-            df_rdo = pd.DataFrame()
-        return df_rdo
+            data = ws.get_all_values()
+            if len(data) > 1:
+                df_rdo = pd.DataFrame(data[1:], columns=data[0])
+            else:
+                df_rdo = pd.DataFrame()
+            return df_rdo
+        except Exception as e_sheet:
+            log(f"Aviso: Não foi possível ler como planilha nativa ({e_sheet}). Tentando via Google Drive API para arquivos Excel (.xlsx)...")
+            # 2. Tentar como arquivo Excel (.xlsx) hospedado no Google Drive via API Drive v3
+            try:
+                import re
+                import io
+                import requests
+                import google.auth.transport.requests
+                
+                # Extrair ID do arquivo da URL do Google Drive / Sheets
+                match = re.search(r'/d/([a-zA-Z0-9_-]+)', rdo_input)
+                if not match:
+                    raise ValueError("ID do arquivo Google Drive não encontrado na URL.")
+                file_id = match.group(1)
+                
+                # Atualizar token OAuth da credencial autenticada
+                req_auth = google.auth.transport.requests.Request()
+                client.http_client.auth.refresh(req_auth)
+                token = client.http_client.auth.token
+                
+                url_drive = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+                headers = {"Authorization": f"Bearer {token}"}
+                res = requests.get(url_drive, headers=headers)
+                if res.status_code == 200:
+                    df_rdo = pd.read_excel(io.BytesIO(res.content))
+                    log(f"SUCESSO: RDO carregada via Google Drive API ({len(df_rdo)} linhas).")
+                    return df_rdo
+                else:
+                    raise ValueError(f"Google Drive API retornou status {res.status_code}: {res.text}")
+            except Exception as e_drive:
+                raise RuntimeError(f"Falha ao carregar planilha RDO via Sheets API ({e_sheet}) e via Drive API ({e_drive})")
     else:
         log(f"Carregando RDO de arquivo Excel local: {rdo_input}")
         return pd.read_excel(rdo_input)
