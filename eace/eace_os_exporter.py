@@ -109,7 +109,12 @@ class EACEOSExporter:
         try:
             self.log(f"1. Acessando portal de Login: {LOGIN_URL}")
             self.driver.get(LOGIN_URL)
-            time.sleep(5)
+            
+            # Aguardar até 25 segundos para os inputs renderizarem (Bubble.io / Cloudflare)
+            for _ in range(5):
+                if len(self.driver.find_elements(By.TAG_NAME, "input")) >= 2:
+                    break
+                time.sleep(5)
 
             # Preencher credenciais
             email_preenchido = False
@@ -303,21 +308,35 @@ class EACEOSExporter:
             return False
 
     def run(self):
-        self._limpar_temp()
-        self.init_driver()
-        try:
-            sucesso_nav = self.login_e_navegar()
-            if not sucesso_nav:
-                self.log("FALHA: Não foi possível chegar à página de chamados.")
-                return False
-
-            self.log("==== Baixando Planilha RI (Rede Interna) ====")
-            return self.export_ri()
-
-        finally:
-            if self.driver:
-                self.driver.quit()
+        max_tentativas = 3
+        for tentativa in range(1, max_tentativas + 1):
+            if tentativa > 1:
+                self.log(f"🔄 Tentativa de retry {tentativa}/{max_tentativas} após falha transitória (aguardando 20s)...")
+                time.sleep(20)
             self._limpar_temp()
+            self.init_driver()
+            try:
+                sucesso_nav = self.login_e_navegar()
+                if not sucesso_nav:
+                    self.log(f"FALHA na tentativa {tentativa}: Não foi possível chegar à página de chamados.")
+                    continue
+
+                self.log("==== Baixando Planilha RI (Rede Interna) ====")
+                if self.export_ri():
+                    return True
+                else:
+                    self.log(f"FALHA na tentativa {tentativa}: Download do arquivo RI não concluído.")
+            except Exception as e_run:
+                self.log(f"⚠️ Erro inesperado na tentativa {tentativa}: {e_run}")
+            finally:
+                if self.driver:
+                    try:
+                        self.driver.quit()
+                    except Exception:
+                        pass
+                self._limpar_temp()
+        self.log("❌ Todas as tentativas do ciclo falharam. O robô aguardará o próximo ciclo agendado.")
+        return False
 
 
 def main():
