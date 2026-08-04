@@ -9,10 +9,11 @@ services:
       - OMADA_CLI=true
       - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
-      - OMADA_INTERVAL=${OMADA_INTERVAL:-300}
+      - OMADA_INTERVAL=300
       - OMADA_DIR=/app/dados_omada
     volumes:
       - ./omada/dados_omada:/app/dados_omada
+    command: ["python", "-u", "omada_exporter_cli.py", "--cli", "--interval", "300"]
 
   # Robô 2: EACE OS Exporter (Baixa a planilha RI do portal EACE / Aprender Conectado)
   eace-os-exporter:
