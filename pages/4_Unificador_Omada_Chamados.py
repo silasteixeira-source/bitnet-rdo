@@ -374,7 +374,16 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                             update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
                             update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
                             update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
-                            st.success("✅ Planilha Google atualizada com sucesso! Verifique as abas online.")
+                            
+                            # Sincronizar planilha completa do Omada no link dedicado do Google Sheets
+                            try:
+                                import unificador_auto as u_auto
+                                u_auto.sincronizar_omada_google(client, u_auto.DEFAULT_OMADA_GSHEET_URL, df_new)
+                                st.success(f"✅ Planilha do Omada espelhada com sucesso ({len(df_new)} controladoras)!")
+                            except Exception as e_omada:
+                                st.warning(f"⚠️ Erro ao espelhar planilha do Omada no Google Sheets: {e_omada}")
+                                
+                            st.success("✅ Planilha Google (Abas do Unificador) atualizada com sucesso! Verifique as abas online.")
                         except Exception as e_sheet:
                             st.error(f"❌ Erro ao atualizar o Google Sheets: {e_sheet}")
                 else:
