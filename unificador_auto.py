@@ -140,6 +140,11 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     """Executa o cruzamento completo de dados e publica nas abas do Google Sheets."""
     log("=== Iniciando Processamento do Unificador de Chamados ===")
     
+    # Se a planilha do Omada Anterior ainda não existir (primeiro ciclo), usa a Atual como fallback
+    if not os.path.exists(omada_old_path) and os.path.exists(omada_new_path):
+        log(f"AVISO: '{omada_old_path}' ainda não foi gerada pelo Omada Exporter. Usando a planilha atual como fallback temporário.")
+        omada_old_path = omada_new_path
+
     # Validação da existência das planilhas (ignora checagem local se for URL http/https)
     for path, nome in [
         (omada_old_path, "Omada Anterior"),

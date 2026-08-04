@@ -17,6 +17,7 @@ import time
 import glob
 import shutil
 import argparse
+import subprocess
 from datetime import datetime
 import pandas as pd
 
@@ -276,6 +277,25 @@ class EACEOSExporter:
                 os.remove(FILE_RI)
             shutil.move(arquivo_baixado, FILE_RI)
             self.log(f"SUCESSO: Planilha RI atualizada -> {FILE_RI}")
+
+            # --- DISPARO AUTOMÁTICO DO UNIFICADOR (CRUZAMENTO EM TEMPO REAL) ---
+            self.log("⚡ Download da EACE concluído! Disparando cruzamento das planilhas (Omada + EACE + RDO)...")
+            try:
+                omada_new = "/app/omada/dados_omada/omada_dados.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados.xlsx") else "omada/dados_omada/omada_dados.xlsx"
+                omada_old = "/app/omada/dados_omada/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados_anterior.xlsx") else "omada/dados_omada/omada_dados_anterior.xlsx"
+                
+                cmd = [
+                    sys.executable, "-u", "unificador_auto.py",
+                    "--old", omada_old,
+                    "--new", omada_new,
+                    "--os", FILE_RI,
+                    "--rdo", "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129",
+                    "--intervalo", "0"
+                ]
+                subprocess.run(cmd, check=False)
+            except Exception as e_unif:
+                self.log(f"⚠️ Erro ao disparar cruzamento no unificador_auto.py: {e_unif}")
+
             return True
 
         except Exception as e:
