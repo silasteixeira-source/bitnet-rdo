@@ -85,6 +85,29 @@ def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
     else:
         worksheet.update([["Nenhum dado encontrado"]])
 
+def carregar_rdo(rdo_input, client):
+    """Carrega a planilha RDO a partir de URL do Google Sheets ou arquivo Excel local."""
+    if str(rdo_input).startswith("http://") or str(rdo_input).startswith("https://"):
+        log(f"Carregando RDO direto do Google Sheets: {rdo_input}")
+        if not client:
+            raise ValueError("Cliente GSpread não autenticado para ler RDO do Google Sheets.")
+        sheet = client.open_by_url(rdo_input)
+        try:
+            ws = sheet.get_worksheet_by_id(1631182129)
+            if not ws:
+                ws = sheet.sheet1
+        except Exception:
+            ws = sheet.sheet1
+        data = ws.get_all_values()
+        if len(data) > 1:
+            df_rdo = pd.DataFrame(data[1:], columns=data[0])
+        else:
+            df_rdo = pd.DataFrame()
+        return df_rdo
+    else:
+        log(f"Carregando RDO de arquivo Excel local: {rdo_input}")
+        return pd.read_excel(rdo_input)
+
 def get_offline_controllers(df, force_name_col="", force_status_col=""):
     """Retorna controladoras offline e identifica colunas."""
     col_name = force_name_col if force_name_col else ('NAME' if 'NAME' in df.columns else df.columns[0])
@@ -117,16 +140,18 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     """Executa o cruzamento completo de dados e publica nas abas do Google Sheets."""
     log("=== Iniciando Processamento do Unificador de Chamados ===")
     
-    # Validação da existência das planilhas
+    # Validação da existência das planilhas (ignora checagem local se for URL http/https)
     for path, nome in [
         (omada_old_path, "Omada Anterior"),
         (omada_new_path, "Omada Atual"),
         (os_path, "Controle de OS (EACE)"),
         (rdo_path, "RDO")
     ]:
-        if not os.path.exists(path):
+        if not str(path).startswith("http") and not os.path.exists(path):
             log(f"FALHA: Planilha ausente - {nome}: '{path}'")
             return False
+
+    client = get_gspread_client()
 
     log("1/4 - Carregando e cruzando planilhas do Omada...")
     df_old = pd.read_excel(omada_old_path)
@@ -155,13 +180,13 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         df_recuperadas['INEP_Extraido'] = df_recuperadas[name_old].astype(str).str.extract(r'(\d{6,})')[0]
 
     log("2/4 - Validando INEPs contra a planilha RDO...")
-    df_rdo = pd.read_excel(rdo_path)
-    if df_rdo.shape[1] > 12:
-        serie_inep = df_rdo.iloc[:, 12]
-    elif 'INEP' in df_rdo.columns:
+    df_rdo = carregar_rdo(rdo_path, client)
+    if 'INEP' in df_rdo.columns:
         serie_inep = df_rdo['INEP']
+    elif df_rdo.shape[1] > 12:
+        serie_inep = df_rdo.iloc[:, 12]
     else:
-        raise ValueError("A planilha RDO não possui coluna 12 (M) ou coluna nomeada 'INEP'.")
+        raise ValueError("A planilha RDO não possui coluna nomeada 'INEP' ou coluna 12 (M).")
         
     ineps_rdo = serie_inep.dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
     mask_no_rdo = df_offline['INEP_Extraido'].isin(ineps_rdo)
@@ -278,15 +303,17 @@ def main():
     parser.add_argument("--old", type=str, default="omada/dados_omada/omada_dados_anterior.xlsx", help="Caminho para omada_dados_anterior.xlsx")
     parser.add_argument("--new", type=str, default="omada/dados_omada/omada_dados.xlsx", help="Caminho para omada_dados.xlsx")
     parser.add_argument("--os", type=str, default="eace/dados_eace/controle_os_ri.xlsx", help="Caminho para controle_os_ri.xlsx")
-    parser.add_argument("--rdo", type=str, default="", help="Caminho para a planilha RDO (ou tenta localizar em /app/rdo/rdo.xlsx ou ./rdoatualizado1.xlsx)")
+    parser.add_argument("--rdo", type=str, default="https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129", help="URL do Google Sheets do RDO ou caminho para arquivo Excel local")
     parser.add_argument("--url", type=str, default=DEFAULT_BITNET_URL, help="URL da planilha Google de destino")
     parser.add_argument("--no-sync", action="store_true", help="Não sincronizar com Google Sheets")
     parser.add_argument("--intervalo", type=int, default=0, help="Intervalo em segundos para repetição contínua (0 = apenas uma vez)")
     args = parser.parse_args()
 
-    # Tenta localizar o RDO automaticamente se não informado
+    # Tenta utilizar RDO por URL ou localiza arquivo
     rdo_path = args.rdo
     if not rdo_path:
+        rdo_path = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129"
+    elif not str(rdo_path).startswith("http") and not os.path.exists(rdo_path):
         possiveis_rdo = [
             "rdo/rdo.xlsx",
             "rdoatualizado1.xlsx",
@@ -298,31 +325,57 @@ def main():
             if os.path.exists(p):
                 rdo_path = p
                 break
-
-    if not rdo_path:
-        log("FALHA: Nenhuma planilha RDO encontrada. Use --rdo para especificar o caminho.")
-        return
+        if not os.path.exists(rdo_path):
+            log("AVISO: Arquivo RDO local não encontrado. Usando URL oficial do Google Sheets como RDO.")
+            rdo_path = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129"
 
     log(f"Origens configuradas -> Omada Anterior: {args.old} | Omada Atual: {args.new} | OS EACE: {args.os} | RDO: {rdo_path}")
 
     if args.intervalo > 0:
-        log(f"Modo contínuo ativado. Intervalo de execução: {args.intervalo}s (5 min).")
-        log("Aguardando 240s (4 min) na inicialização para os robôs do Omada e EACE concluírem os downloads...")
-        time.sleep(240)
+        log("⚡ Modo contínuo (Watchdog Inteligente) ativado!")
+        log("O robô irá monitorar em tempo real quando o Omada Exporter (Robô 1) e o EACE Exporter (Robô 2) concluírem suas atualizações.")
+        
+        last_mtime_omada = 0
+        last_mtime_eace = 0
+
         while True:
             try:
-                processar_fluxo(
-                    omada_old_path=args.old,
-                    omada_new_path=args.new,
-                    os_path=args.os,
-                    rdo_path=rdo_path,
-                    sync_google=(not args.no_sync),
-                    gsheet_url=args.url
-                )
+                omada_exists = os.path.exists(args.new)
+                eace_exists = os.path.exists(args.os)
+
+                if omada_exists and eace_exists:
+                    mtime_omada = os.path.getmtime(args.new)
+                    mtime_eace = os.path.getmtime(args.os)
+
+                    # Se qualquer uma das planilhas foi atualizada desde a última execução
+                    if mtime_omada > last_mtime_omada or mtime_eace > last_mtime_eace:
+                        log("🔔 Nova exportação detectada nas planilhas do Omada e/ou Controle de OS!")
+                        # Aguarda 5 segundos para garantir que o arquivo terminou de ser gravado no disco
+                        time.sleep(5)
+                        
+                        sucesso = processar_fluxo(
+                            omada_old_path=args.old,
+                            omada_new_path=args.new,
+                            os_path=args.os,
+                            rdo_path=rdo_path,
+                            sync_google=(not args.no_sync),
+                            gsheet_url=args.url
+                        )
+                        if sucesso:
+                            last_mtime_omada = os.path.getmtime(args.new)
+                            last_mtime_eace = os.path.getmtime(args.os)
+                            log("✅ Cruzamento concluído! Aguardando o próximo ciclo dos robôs 1 e 2...")
+                        else:
+                            log("⚠️ Ocorreu um problema no cruzamento. Tentando novamente em 30s...")
+                            time.sleep(30)
+                            continue
+                else:
+                    log("⏳ Aguardando os arquivos do Omada e EACE serem criados pela primeira vez...")
             except Exception as ex:
-                log(f"Erro durante execução do unificador: {ex}")
-            log(f"Dormindo por {args.intervalo}s até o próximo ciclo...")
-            time.sleep(args.intervalo)
+                log(f"Erro no monitoramento do unificador: {ex}")
+
+            # Verifica o disco a cada 15 segundos sem gastar CPU
+            time.sleep(15)
     else:
         processar_fluxo(
             omada_old_path=args.old,

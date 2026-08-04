@@ -70,7 +70,12 @@ with c3:
     os_file = st.file_uploader("Upload Planilha OS", type=["xlsx", "xls"], key="os")
 with c4:
     st.markdown("### 📁 RDO")
-    rdo_file = st.file_uploader("Upload Planilha RDO", type=["xlsx", "xls"], key="rdo")
+    usar_rdo_google = st.checkbox("Usar RDO Oficial (Google Sheets)", value=True)
+    if not usar_rdo_google:
+        rdo_file = st.file_uploader("Upload Planilha RDO", type=["xlsx", "xls"], key="rdo")
+    else:
+        rdo_file = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129"
+        st.info("📌 Conectado direto ao Google Sheets oficial.")
 
 st.divider()
 
@@ -176,7 +181,23 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
 
             with st.spinner("2/3 - Validando INEPs com RDO..."):
                 # --- PASSO 2: RDO ---
-                df_rdo = pd.read_excel(rdo_file)
+                if isinstance(rdo_file, str) and rdo_file.startswith("http"):
+                    client_rdo = authenticate_gspread()
+                    if not client_rdo:
+                        st.error("❌ Falha ao conectar ao Google Sheets para ler o RDO.")
+                        st.stop()
+                    sh_rdo = client_rdo.open_by_url(rdo_file)
+                    try:
+                        ws_rdo = sh_rdo.get_worksheet_by_id(1631182129)
+                        if not ws_rdo:
+                            ws_rdo = sh_rdo.sheet1
+                    except Exception:
+                        ws_rdo = sh_rdo.sheet1
+                    data_rdo = ws_rdo.get_all_values()
+                    df_rdo = pd.DataFrame(data_rdo[1:], columns=data_rdo[0]) if len(data_rdo) > 1 else pd.DataFrame()
+                else:
+                    df_rdo = pd.read_excel(rdo_file)
+
                 if modo_coluna_inep == "Pela posição (Coluna M)":
                     serie_inep = df_rdo.iloc[:, 12]
                 else:

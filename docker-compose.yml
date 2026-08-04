@@ -28,3 +28,18 @@ services:
     volumes:
       - ./eace/dados_eace:/app/dados_eace
     command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "300"]
+
+  # Robô 3: Unificador Automático (Cruza Omada + EACE + RDO e atualiza Google Sheets)
+  unificador-auto:
+    build:
+      context: .
+      dockerfile: unificador.Dockerfile
+    container_name: rdo_unificador_auto
+    restart: unless-stopped
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./omada/dados_omada:/app/omada/dados_omada
+      - ./eace/dados_eace:/app/eace/dados_eace
+      - ./.streamlit:/app/.streamlit
+    command: ["python", "-u", "unificador_auto.py", "--intervalo", "300"]
