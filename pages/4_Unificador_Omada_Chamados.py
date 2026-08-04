@@ -186,15 +186,29 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                     if not client_rdo:
                         st.error("❌ Falha ao conectar ao Google Sheets para ler o RDO.")
                         st.stop()
-                    sh_rdo = client_rdo.open_by_url(rdo_file)
                     try:
-                        ws_rdo = sh_rdo.get_worksheet_by_id(1631182129)
-                        if not ws_rdo:
+                        sh_rdo = client_rdo.open_by_url(rdo_file)
+                        try:
+                            ws_rdo = sh_rdo.get_worksheet_by_id(1631182129)
+                            if not ws_rdo:
+                                ws_rdo = sh_rdo.sheet1
+                        except Exception:
                             ws_rdo = sh_rdo.sheet1
-                    except Exception:
-                        ws_rdo = sh_rdo.sheet1
-                    data_rdo = ws_rdo.get_all_values()
-                    df_rdo = pd.DataFrame(data_rdo[1:], columns=data_rdo[0]) if len(data_rdo) > 1 else pd.DataFrame()
+                        data_rdo = ws_rdo.get_all_values()
+                        df_rdo = pd.DataFrame(data_rdo[1:], columns=data_rdo[0]) if len(data_rdo) > 1 else pd.DataFrame()
+                    except Exception as e_sheet:
+                        try:
+                            import re, io, requests, google.auth.transport.requests
+                            match = re.search(r'/d/([a-zA-Z0-9_-]+)', rdo_file)
+                            if not match:
+                                raise ValueError("ID do arquivo Google Drive não encontrado na URL.")
+                            req_auth = google.auth.transport.requests.Request()
+                            client_rdo.auth.refresh(req_auth)
+                            res = requests.get(f"https://www.googleapis.com/drive/v3/files/{match.group(1)}?alt=media", headers={"Authorization": f"Bearer {client_rdo.auth.token}"})
+                            df_rdo = pd.read_excel(io.BytesIO(res.content)) if res.status_code == 200 else pd.DataFrame()
+                        except Exception as e_drive:
+                            st.error(f"❌ Falha ao carregar planilha RDO no Google Drive: {e_drive}")
+                            st.stop()
                 else:
                     df_rdo = pd.read_excel(rdo_file)
 
