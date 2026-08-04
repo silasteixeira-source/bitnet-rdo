@@ -3,6 +3,18 @@ services:
     build: .
     container_name: eace_os_exporter_robot
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
