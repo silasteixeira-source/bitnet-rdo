@@ -3,11 +3,12 @@ services:
     build: .
     container_name: omada_exporter_service
     restart: unless-stopped
+    shm_size: '2gb'
     deploy:
       resources:
         limits:
-          cpus: '0.75'
-          memory: 768M
+          cpus: '0.80'
+          memory: 1G
         reservations:
           memory: 256M
     logging:
