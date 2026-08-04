@@ -230,30 +230,29 @@ class EACEOSExporter:
         try:
             self.log("Buscando botão de exportação da planilha RI (Rede Interna)...")
             # Mapear os botões da barra de ferramentas superior onde ficam RI (X ≈ 1180) e RE (X ≈ 1210)
-            buttons = []
+            export_btns = []
             todos_botoes = self.driver.find_elements(By.TAG_NAME, "button")
-            for btn in todos_botoes:
+            for b in todos_botoes:
                 try:
-                    r = btn.rect
-                    # Em resolução 1280x720, os botões RI (≈1180) e RE (≈1210) ficam perto de X=1180 e X=1210
-                    if 1150 <= r["x"] <= 1250 and r["y"] < 450:
-                        buttons.append((r["x"], btn))
+                    r = b.rect
+                    # Filtra apenas ícones pequenos (width < 60) na área de exportação para ignorar "Adicionar nova OS"
+                    if 1150 < r['x'] < 1250 and r['y'] < 250 and r['width'] < 60:
+                        export_btns.append((r['x'], b))
                 except Exception:
                     pass
-            buttons.sort(key=lambda item: item[0])
-            self.log(f" -> Botões de exportação (RI/RE) detectados (1150 <= X <= 1250): {len(buttons)} (X: {[int(item[0]) for item in buttons]})")
+            export_btns.sort(key=lambda x: x[0])
+            self.log(f" -> Botões de exportação pequenos (width < 60) na faixa (1150 < X < 1250): {len(export_btns)} (X: {[int(item[0]) for item in export_btns]})")
 
-            if not buttons:
-                coord_todos = [int(b.rect["x"]) for b in todos_botoes if b.rect["y"] < 450]
-                self.log(f"❌ Erro: Nenhum botão (RI/RE) encontrado na faixa X ≈ 1180-1210. Todos os botões em Y<450 na página: X={coord_todos}")
+            if not export_btns:
+                coord_todos = [int(b.rect["x"]) for b in todos_botoes if b.rect["y"] < 250 and b.rect["width"] < 60]
+                self.log(f"❌ Erro: Nenhum ícone de download (RI/RE) encontrado na faixa X ≈ 1180-1210. Todos os ícones em Y<250: X={coord_todos}")
                 return False
 
-            # Selecionar cirurgicamente o botão com X mais próximo de 1180 (RI)
-            melhor_item = min(buttons, key=lambda item: abs(item[0] - 1180))
-            x_pos, alvo_btn = melhor_item
-            self.log(f" -> Botão RI selecionado: X={int(x_pos)} (mais próximo de 1180)")
+            # O RI é o primeiro da esquerda nesta faixa (menor X, ≈ 1180)
+            x_pos, ri_btn = export_btns[0]
+            self.log(f" -> Botão RI selecionado: X={int(x_pos)} (primeiro ícone da esquerda)")
             self.log(f" -> Clicando no botão da Planilha RI via JS execute_script...")
-            self.driver.execute_script("arguments[0].click();", alvo_btn)
+            self.driver.execute_script("arguments[0].click();", ri_btn)
 
             # Aguardar o novo arquivo na pasta temporária (aumentado para 120s para servidores lentos do Bubble.io)
             timeout = 120
