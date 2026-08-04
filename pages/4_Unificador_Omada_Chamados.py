@@ -203,8 +203,8 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                             if not match:
                                 raise ValueError("ID do arquivo Google Drive não encontrado na URL.")
                             req_auth = google.auth.transport.requests.Request()
-                            client_rdo.auth.refresh(req_auth)
-                            res = requests.get(f"https://www.googleapis.com/drive/v3/files/{match.group(1)}?alt=media", headers={"Authorization": f"Bearer {client_rdo.auth.token}"})
+                            client_rdo.http_client.auth.refresh(req_auth)
+                            res = requests.get(f"https://www.googleapis.com/drive/v3/files/{match.group(1)}?alt=media", headers={"Authorization": f"Bearer {client_rdo.http_client.auth.token}"})
                             df_rdo = pd.read_excel(io.BytesIO(res.content)) if res.status_code == 200 else pd.DataFrame()
                         except Exception as e_drive:
                             st.error(f"❌ Falha ao carregar planilha RDO no Google Drive: {e_drive}")
