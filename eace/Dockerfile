@@ -16,11 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copiar dependências Python
-COPY requirements.txt .
+COPY eace/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código do robô
-COPY eace_os_exporter.py .
+# Copiar código do robô EACE e do Unificador Automático
+COPY eace/eace_os_exporter.py .
+COPY unificador_auto.py .
+COPY read_excel.py .
+COPY utils_omada.py .
 
 # Volume persistente para salvar a planilha em dados_eace na VPS
 VOLUME ["/app/dados_eace"]
