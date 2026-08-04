@@ -4,12 +4,13 @@ services:
     build: ./omada
     container_name: rdo_omada_exporter
     restart: unless-stopped
+    shm_size: '2gb'
     # Limites de recursos para proteção da VPS
     deploy:
       resources:
         limits:
-          cpus: '0.75'
-          memory: 768M
+          cpus: '0.80'
+          memory: 1G
         reservations:
           memory: 256M
     # Limitação de logs no disco da VPS (máximo 30MB por container)
@@ -36,14 +37,15 @@ services:
       dockerfile: eace/Dockerfile
     container_name: rdo_eace_os_exporter
     restart: unless-stopped
+    shm_size: '2gb'
     # Limites de recursos para proteção da VPS
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: '0.80'
+          memory: 1G
         reservations:
-          memory: 128M
+          memory: 256M
     # Limitação de logs no disco da VPS (máximo 30MB por container)
     logging:
       driver: "json-file"
