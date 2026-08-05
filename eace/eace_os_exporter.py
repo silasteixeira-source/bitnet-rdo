@@ -389,7 +389,7 @@ def main():
             omada_old="/app/omada/dados_st1/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_st1/omada_dados_anterior.xlsx") else "omada/dados_st1/omada_dados_anterior.xlsx",
             omada_new="/app/omada/dados_st1/omada_dados.xlsx" if os.path.exists("/app/omada/dados_st1/omada_dados.xlsx") else "omada/dados_st1/omada_dados.xlsx",
             rdo_url="https://docs.google.com/spreadsheets/d/1IoTyZ4fmgUwvdLYtEC_9UqgIDBmuLH_o/edit?gid=483331132#gid=483331132",
-            dest_url="https://docs.google.com/spreadsheets/d/1IoTyZ4fmgUwvdLYtEC_9UqgIDBmuLH_o/edit",
+            dest_url="https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit",
             omada_url="https://docs.google.com/spreadsheets/d/1wDbFAKnbf62CvW7byBM5yXXMUAx2lwoquvOC59xJmN4/edit?gid=998874036#gid=998874036",
             label="ST1"
         )
