@@ -296,12 +296,19 @@ class EACEOSExporter:
                 omada_new = "/app/omada/dados_omada/omada_dados.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados.xlsx") else "omada/dados_omada/omada_dados.xlsx"
                 omada_old = "/app/omada/dados_omada/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados_anterior.xlsx") else "omada/dados_omada/omada_dados_anterior.xlsx"
                 
+                # URLs dinâmicas com fallback para os padrões do BITNET (compatibilidade)
+                rdo_url = os.getenv("RDO_SPREADSHEET_URL", "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129")
+                dest_url = os.getenv("DESTINATION_GSHEET_URL", "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
+                omada_url = os.getenv("DESTINATION_OMADA_URL", "https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036")
+                
                 cmd = [
                     sys.executable, "-u", "unificador_auto.py",
                     "--old", omada_old,
                     "--new", omada_new,
                     "--os", FILE_RI,
-                    "--rdo", "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129",
+                    "--rdo", rdo_url,
+                    "--url", dest_url,
+                    "--omada-url", omada_url,
                     "--intervalo", "0"
                 ]
                 subprocess.run(cmd, check=False)
