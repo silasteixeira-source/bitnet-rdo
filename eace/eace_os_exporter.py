@@ -32,27 +32,32 @@ from selenium.webdriver.support import expected_conditions as EC
 # CONFIGURAÇÕES E CAMINHOS
 # ============================================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DADOS_DIR = os.path.join(BASE_DIR, "dados_eace")
+DEFAULT_DADOS_DIR = os.path.join(BASE_DIR, "dados_eace")
 TEMP_DOWNLOAD_DIR = os.path.join(BASE_DIR, "temp_downloads")
 
 LOGIN_URL = "https://eace.org.br/login"
 EMAIL_DEFAULT = os.getenv("EACE_EMAIL", "noc@bitinternet.com.br")
 PASSWORD_DEFAULT = os.getenv("EACE_PASSWORD", "")
 
-FILE_RI = os.path.join(DADOS_DIR, "controle_os_ri.xlsx")
-
-
 class EACEOSExporter:
-    def __init__(self, email=EMAIL_DEFAULT, password=PASSWORD_DEFAULT, headless=True, intervalo=0):
+    def __init__(self, email=EMAIL_DEFAULT, password=PASSWORD_DEFAULT, headless=True, intervalo=0, dados_dir=DEFAULT_DADOS_DIR, rdo_url=None, dest_url=None, omada_url=None, omada_old=None, omada_new=None, label="BITNET"):
         self.email = email
         self.password = password
         self.headless = headless
         self.intervalo = intervalo
+        self.dados_dir = dados_dir
+        self.rdo_url = rdo_url or os.getenv("RDO_SPREADSHEET_URL", "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129")
+        self.dest_url = dest_url or os.getenv("DESTINATION_GSHEET_URL", "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
+        self.omada_url = omada_url or os.getenv("DESTINATION_OMADA_URL", "https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036")
+        self.omada_old = omada_old or "/app/omada/dados_omada/omada_dados_anterior.xlsx"
+        self.omada_new = omada_new or "/app/omada/dados_omada/omada_dados.xlsx"
+        self.label = label
+        self.file_ri = os.path.join(self.dados_dir, "controle_os_ri.xlsx")
         self.driver = None
         self._setup_dirs()
 
     def _setup_dirs(self):
-        for path in [DADOS_DIR, TEMP_DOWNLOAD_DIR]:
+        for path in [self.dados_dir, TEMP_DOWNLOAD_DIR]:
             os.makedirs(path, exist_ok=True)
         self._limpar_temp()
 
@@ -284,31 +289,23 @@ class EACEOSExporter:
                 self.log("❌ Timeout (120s) ao aguardar download da planilha RI gerada pelo Bubble.io.")
                 return False
 
-            # Sobrescrever arquivo destino em dados_eace/controle_os_ri.xlsx
-            if os.path.exists(FILE_RI):
-                os.remove(FILE_RI)
-            shutil.move(arquivo_baixado, FILE_RI)
-            self.log(f"SUCESSO: Planilha RI atualizada -> {FILE_RI}")
+            # Sobrescrever arquivo destino
+            if os.path.exists(self.file_ri):
+                os.remove(self.file_ri)
+            shutil.move(arquivo_baixado, self.file_ri)
+            self.log(f"SUCESSO: Planilha RI atualizada -> {self.file_ri}")
 
             # --- DISPARO AUTOMÁTICO DO UNIFICADOR (CRUZAMENTO EM TEMPO REAL) ---
-            self.log("⚡ Download da EACE concluído! Disparando cruzamento das planilhas (Omada + EACE + RDO)...")
+            self.log(f"⚡ Download da EACE concluído! Disparando cruzamento das planilhas (Omada + EACE + RDO) para {self.label}...")
             try:
-                omada_new = "/app/omada/dados_omada/omada_dados.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados.xlsx") else "omada/dados_omada/omada_dados.xlsx"
-                omada_old = "/app/omada/dados_omada/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados_anterior.xlsx") else "omada/dados_omada/omada_dados_anterior.xlsx"
-                
-                # URLs dinâmicas com fallback para os padrões do BITNET (compatibilidade)
-                rdo_url = os.getenv("RDO_SPREADSHEET_URL", "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129")
-                dest_url = os.getenv("DESTINATION_GSHEET_URL", "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit")
-                omada_url = os.getenv("DESTINATION_OMADA_URL", "https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036")
-                
                 cmd = [
                     sys.executable, "-u", "unificador_auto.py",
-                    "--old", omada_old,
-                    "--new", omada_new,
-                    "--os", FILE_RI,
-                    "--rdo", rdo_url,
-                    "--url", dest_url,
-                    "--omada-url", omada_url,
+                    "--old", self.omada_old,
+                    "--new", self.omada_new,
+                    "--os", self.file_ri,
+                    "--rdo", self.rdo_url,
+                    "--url", self.dest_url,
+                    "--omada-url", self.omada_url,
                     "--intervalo", "0"
                 ]
                 subprocess.run(cmd, check=False)
@@ -354,25 +351,69 @@ class EACEOSExporter:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="EACE OS Exporter - Automação de Chamados RI (Rede Interna)")
+    parser = argparse.ArgumentParser(description="EACE OS Exporter - Automação de Chamados RI (Multi-Tenant)")
     parser.add_argument("--no-headless", action="store_true", help="Executar com navegador visível (GUI)")
     parser.add_argument("--intervalo", type=int, default=0, help="Intervalo em segundos para repetição em loop (0 = execução única)")
     args = parser.parse_args()
 
     headless = not args.no_headless
-    intervalo = args.intervalo
+    intervalo = args.intervalo or int(os.getenv("INTERVALO_SEGUNDOS", 300))
 
-    exporter = EACEOSExporter(headless=headless, intervalo=intervalo)
+    # --- Configurar Exportador BITNET ---
+    exporter_bitnet = EACEOSExporter(
+        email=os.getenv("EACE_EMAIL", "noc@bitinternet.com.br"),
+        password=os.getenv("EACE_PASSWORD", ""),
+        headless=headless,
+        intervalo=intervalo,
+        dados_dir=DEFAULT_DADOS_DIR,
+        omada_old="/app/omada/dados_omada/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados_anterior.xlsx") else "omada/dados_omada/omada_dados_anterior.xlsx",
+        omada_new="/app/omada/dados_omada/omada_dados.xlsx" if os.path.exists("/app/omada/dados_omada/omada_dados.xlsx") else "omada/dados_omada/omada_dados.xlsx",
+        rdo_url="https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129",
+        dest_url="https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit",
+        omada_url="https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036",
+        label="BITNET"
+    )
 
-    if intervalo > 0:
+    # --- Configurar Exportador ST1 ---
+    email_st1 = os.getenv("EACE_ST1_EMAIL", "")
+    password_st1 = os.getenv("EACE_ST1_PASSWORD", "")
+    
+    exporter_st1 = None
+    if email_st1 and password_st1:
+        exporter_st1 = EACEOSExporter(
+            email=email_st1,
+            password=password_st1,
+            headless=headless,
+            intervalo=intervalo,
+            dados_dir=os.path.join(BASE_DIR, "dados_st1"),
+            omada_old="/app/omada/dados_st1/omada_dados_anterior.xlsx" if os.path.exists("/app/omada/dados_st1/omada_dados_anterior.xlsx") else "omada/dados_st1/omada_dados_anterior.xlsx",
+            omada_new="/app/omada/dados_st1/omada_dados.xlsx" if os.path.exists("/app/omada/dados_st1/omada_dados.xlsx") else "omada/dados_st1/omada_dados.xlsx",
+            rdo_url="https://docs.google.com/spreadsheets/d/1IoTyZ4fmgUwvdLYtEC_9UqgIDBmuLH_o/edit?gid=483331132#gid=483331132",
+            dest_url="https://docs.google.com/spreadsheets/d/1IoTyZ4fmgUwvdLYtEC_9UqgIDBmuLH_o/edit",
+            omada_url="https://docs.google.com/spreadsheets/d/1wDbFAKnbf62CvW7byBM5yXXMUAx2lwoquvOC59xJmN4/edit?gid=998874036#gid=998874036",
+            label="ST1"
+        )
+
+    if args.intervalo > 0 or intervalo > 0:
         print(f"[EACE Exporter] Modo contínuo ativado (intervalo: {intervalo}s - 5 min).")
         print("[EACE Exporter] Aguardando 180s (3 min) de delay inicial para que o Omada Exporter conclua na VPS...")
         time.sleep(180)
         while True:
-            exporter.run()
+            print("\n[EACE Exporter] === Iniciando Processamento EACE -> BITNET ===")
+            exporter_bitnet.run()
+            
+            if exporter_st1:
+                print("\n[EACE Exporter] === Iniciando Processamento EACE -> ST1 ===")
+                exporter_st1.run()
+                
+            print(f"\n[EACE Exporter] Aguardando {intervalo}s para o próximo ciclo global...")
             time.sleep(intervalo)
     else:
-        exporter.run()
+        print("\n[EACE Exporter] === Iniciando Processamento EACE -> BITNET ===")
+        exporter_bitnet.run()
+        if exporter_st1:
+            print("\n[EACE Exporter] === Iniciando Processamento EACE -> ST1 ===")
+            exporter_st1.run()
 
 
 if __name__ == "__main__":
