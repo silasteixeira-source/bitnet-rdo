@@ -698,7 +698,7 @@ class OmadaExporter:
                 pass
             return False
 
-    def _wait_for_download(self, timeout=45):
+    def _wait_for_download(self, timeout=120):
         """Aguarda o arquivo ser baixado, sobrescreve omada_dados.xlsx e limpa arquivos antigos."""
         start = time.time()
         target = os.path.join(self.download_dir, self.filename)
