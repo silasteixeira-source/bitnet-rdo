@@ -57,6 +57,16 @@ st.set_page_config(page_title="Unificador Omada e Chamados", page_icon="⚡", la
 st.title("⚡ Fluxo Unificado: Omada & Chamados")
 st.markdown("Faça o upload de todas as planilhas abaixo para cruzar automaticamente a evolução do Omada com o RDO e o Controle de OS.")
 
+st.divider()
+
+destino_planilha = st.radio(
+    "Para qual cliente/projeto deseja rodar a unificação?",
+    ["BITNET", "ST1"],
+    horizontal=True
+)
+
+st.divider()
+
 # Entradas
 c1, c2, c3, c4 = st.columns(4)
 with c1:
@@ -74,8 +84,11 @@ with c4:
     if not usar_rdo_google:
         rdo_file = st.file_uploader("Upload Planilha RDO", type=["xlsx", "xls"], key="rdo")
     else:
-        rdo_file = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129"
-        st.info("📌 Conectado direto ao Google Sheets oficial.")
+        if destino_planilha == "BITNET":
+            rdo_file = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129"
+        else:
+            rdo_file = "https://docs.google.com/spreadsheets/d/1IoTyZ4fmgUwvdLYtEC_9UqgIDBmuLH_o/edit?gid=483331132#gid=483331132"
+        st.info(f"📌 Conectado ao RDO Oficial da {destino_planilha}.")
 
 st.divider()
 
@@ -124,20 +137,18 @@ st.divider()
 st.subheader("☁️ Configuração Google Sheets")
 sync_google = st.checkbox("Sincronizar automaticamente após o processamento", value=True)
 
-destino_planilha = st.radio(
-    "Para qual planilha deseja enviar os dados?",
-    ["BITNET", "ST1"],
-    horizontal=True
-)
-
 # URLs Padrões (Podem ser editadas pelo usuário se necessário)
 default_bitnet = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
 default_st1 = "https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit"
+default_omada_bitnet = "https://docs.google.com/spreadsheets/d/1r8jQ8jJGWSLQoACVoBy8emYlk3avJOuEXM10W_tlY-o/edit?gid=998874036#gid=998874036"
+default_omada_st1 = "https://docs.google.com/spreadsheets/d/1wDbFAKnbf62CvW7byBM5yXXMUAx2lwoquvOC59xJmN4/edit?gid=998874036#gid=998874036"
 
 if destino_planilha == "BITNET":
     gsheet_url = st.text_input("URL da Planilha BITNET", value=default_bitnet)
+    omada_gsheet_url = default_omada_bitnet
 else:
     gsheet_url = st.text_input("URL da Planilha ST1", value=default_st1)
+    omada_gsheet_url = default_omada_st1
 
 st.write("")
 
@@ -378,7 +389,7 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                             # Sincronizar planilha completa do Omada no link dedicado do Google Sheets
                             try:
                                 import unificador_auto as u_auto
-                                u_auto.sincronizar_omada_google(client, u_auto.DEFAULT_OMADA_GSHEET_URL, df_new)
+                                u_auto.sincronizar_omada_google(client, omada_gsheet_url, df_new)
                                 st.success(f"✅ Planilha do Omada espelhada com sucesso ({len(df_new)} controladoras)!")
                             except Exception as e_omada:
                                 st.warning(f"⚠️ Erro ao espelhar planilha do Omada no Google Sheets: {e_omada}")
