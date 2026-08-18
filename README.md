@@ -13,17 +13,22 @@ Para que os cronômetros fiquem perfeitamente sincronizados, siga EXATAMENTE a o
 git clone https://github.com/silasteixeira-source/bitnet-rdo.git
 cd bitnet-rdo
 
-# 2. Pare qualquer container que possa estar rodando fora de sincronia
+# 2. Configure as Variáveis de Ambiente (Senhas e Credenciais)
+# Crie uma cópia do arquivo de exemplo para o arquivo definitivo (.env) e edite-o
+cp .env.example .env
+nano .env  # Preencha os emails, senhas e configurações de intervalo do Omada e EACE
+
+# 3. Pare qualquer container que possa estar rodando fora de sincronia
 sudo docker compose down
 
-# 3. Construa as imagens do zero
+# 4. Construa as imagens do zero
 sudo docker compose build --no-cache
 
-# 4. Inicie os containers SIMULTANEAMENTE
+# 5. Inicie os containers SIMULTANEAMENTE
 # (Isso garante que os timers do Omada e EACE fiquem sincronizados e não estourem a RAM)
 sudo docker compose up -d
 
-# 5. Acompanhe os logs
+# 6. Acompanhe os logs
 sudo docker compose logs -f
 ```
 
