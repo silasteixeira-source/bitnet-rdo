@@ -1,3 +1,4 @@
+.env
 .streamlit/secrets.toml
 acompanhamento.db
 *.ini
@@ -7,4 +8,12 @@ __pycache__/
 *.pyc
 *.xlsx
 *.xls
+*.csv
+*.log
 temp_git*
+logs/
+dados_omada/
+dados_st1/
+dados_eace/
+eace/dados_*/
+omada/dados_*/
