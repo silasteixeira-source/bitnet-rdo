@@ -24,10 +24,13 @@ services:
       - OMADA_CLI=true
       - OMADA_EMAIL=${OMADA_EMAIL:-noceace@bitinternet.com.br}
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
+      - OMADA_ST1_EMAIL=${OMADA_ST1_EMAIL:-""}
+      - OMADA_ST1_PASSWORD=${OMADA_ST1_PASSWORD:-""}
       - OMADA_INTERVAL=300
       - OMADA_DIR=/app/dados_omada
     volumes:
       - ./omada/dados_omada:/app/dados_omada
+      - ./omada/dados_st1:/app/dados_st1_omada
     command: ["python", "-u", "omada_exporter_cli.py", "--cli", "--interval", "300"]
 
   # Robô 2: EACE OS Exporter (Baixa a planilha RI do portal EACE e dispara o cruzamento do Unificador)
@@ -56,9 +59,13 @@ services:
       - TZ=America/Sao_Paulo
       - EACE_EMAIL=${EACE_EMAIL:-noc@bitinternet.com.br}
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
+      - EACE_ST1_EMAIL=${EACE_ST1_EMAIL:-""}
+      - EACE_ST1_PASSWORD=${EACE_ST1_PASSWORD:-""}
       - EACE_INTERVAL=${EACE_INTERVAL:-300}
     volumes:
       - ./eace/dados_eace:/app/dados_eace
+      - ./eace/dados_st1:/app/dados_st1
       - ./omada/dados_omada:/app/omada/dados_omada
+      - ./omada/dados_st1:/app/omada/dados_st1
       - ./.streamlit:/app/.streamlit
     command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "300"]

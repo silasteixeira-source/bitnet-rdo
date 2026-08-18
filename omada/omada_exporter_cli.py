@@ -698,7 +698,7 @@ class OmadaExporter:
                 pass
             return False
 
-    def _wait_for_download(self, timeout=45):
+    def _wait_for_download(self, timeout=120):
         """Aguarda o arquivo ser baixado, sobrescreve omada_dados.xlsx e limpa arquivos antigos."""
         start = time.time()
         target = os.path.join(self.download_dir, self.filename)
@@ -774,7 +774,7 @@ class OmadaExporter:
     # LOOP PRINCIPAL
     # -----------------------------------------------------------------------
     def run(self):
-        """Loop principal de exportação periódica."""
+        """Loop principal de exportação periódica (usado pela GUI)."""
         self.running = True
         self._set_status("Rodando")
         self._log("=" * 50)
@@ -785,11 +785,9 @@ class OmadaExporter:
         self._log("=" * 50)
 
         try:
-            # Carregar dados antes de iniciar
             self.processed_data = self._load_processed_data()
             self.inep_list = self._load_ineps_from_eace()
             
-            # Inicializar browser e fazer login
             self._ensure_driver()
             if not self._do_login():
                 self._log("Login falhou. Tentando novamente em 10s...")
@@ -800,12 +798,9 @@ class OmadaExporter:
                     return
 
             self._wait(3)
-
-            # Mudar para visualização LIST
             self._switch_to_list_view()
             self._wait(2)
 
-            # Primeira exportação
             self._log("--- Exportação inicial ---")
             if self._export_once():
                 self.export_count += 1
@@ -814,17 +809,13 @@ class OmadaExporter:
             else:
                 self._log("Primeira exportação falhou. Tentando próxima...")
 
-            # Fechar Chrome imediatamente após exportação inicial para liberar RAM na VPS
             if self.driver:
-                try:
-                    self.driver.quit()
-                except Exception:
-                    pass
+                try: self.driver.quit()
+                except: pass
                 self.driver = None
                 self.is_logged_in = False
                 self.is_list_view = False
 
-            # Loop periódico
             while self.running:
                 self._log(f"Aguardando {self.interval}s para próxima exportação...")
                 self._wait(self.interval)
@@ -832,48 +823,53 @@ class OmadaExporter:
                 if not self.running:
                     break
 
-                self._log("--- Nova exportação ---")
-                self._set_status("Exportando...")
-
-                # Recriar driver do zero (garante RAM 100% limpa sem vazamento de memória)
-                self._ensure_driver()
-                if not self._do_login():
-                    self._log("Login falhou. Tentando na próxima iteração.")
-                    if self.driver:
-                        try:
-                            self.driver.quit()
-                        except Exception:
-                            pass
-                        self.driver = None
-                        self.is_logged_in = False
-                        self.is_list_view = False
-                    continue
-
-                self._wait(3)
-                self._switch_to_list_view()
-                self._wait(2)
-
-                if self._export_once():
-                    self.export_count += 1
-                    self.last_export_time = datetime.now()
-                    self._log(f"Exportação #{self.export_count} concluída com sucesso.")
-                else:
-                    self._log("Falha nesta exportação. Tentando na próxima...")
-
-                # Fechar Chrome após exportar para liberar 100% da RAM durante repouso
-                if self.driver:
-                    try:
-                        self.driver.quit()
-                    except Exception:
-                        pass
-                    self.driver = None
-                    self.is_logged_in = False
-                    self.is_list_view = False
-
+                self.run_once(skip_logs=True)
+                
         except Exception as e:
-            self._log(f"ERRO CRÍTICO: {e}")
+            self._log(f"Erro no loop principal: {e}")
+            self._set_status("Erro Fatal")
         finally:
-            self._cleanup()
+            self.stop()
+            
+    def run_once(self, skip_logs=False):
+        """Executa exatamente UM ciclo de exportação (usado pelo CLI Multi-Tenant)."""
+        self.running = True
+        if not skip_logs:
+            self._set_status("Exportando...")
+            self._log("--- Nova exportação ---")
+            
+        try:
+            self._ensure_driver()
+            if not self._do_login():
+                self._log("Login falhou. Abortando ciclo.")
+                return False
+
+            self._wait(3)
+            self._switch_to_list_view()
+            self._wait(2)
+
+            if self._export_once():
+                self.export_count += 1
+                self.last_export_time = datetime.now()
+                self._log(f"Exportação #{self.export_count} concluída com sucesso.")
+                sucesso = True
+            else:
+                self._log("Exportação falhou neste ciclo.")
+                sucesso = False
+                
+            return sucesso
+        except Exception as e:
+            self._log(f"ERRO CRÍTICO no ciclo run_once: {e}")
+            return False
+        finally:
+            if self.driver:
+                try: self.driver.quit()
+                except: pass
+                self.driver = None
+                self.is_logged_in = False
+                self.is_list_view = False
+
+
 
     def stop(self):
         """Solicita parada do exportador."""
@@ -1165,38 +1161,58 @@ class ExporterApp:
 # MAIN
 # ============================================================================
 def run_cli_mode(args):
-    """Executa o exportador em modo CLI (sem interface gráfica Tkinter)."""
-    email = args.email or os.getenv("OMADA_EMAIL", DEFAULT_EMAIL)
-    password = args.password or os.getenv("OMADA_PASSWORD", DEFAULT_PASSWORD)
+    """Executa o exportador em modo CLI (sem interface gráfica Tkinter), de forma Sequencial."""
     interval = args.interval or int(os.getenv("OMADA_INTERVAL", DEFAULT_INTERVAL))
-    download_dir = args.dir or os.getenv("OMADA_DIR", get_default_download_dir())
+    
+    email_bitnet = os.getenv("OMADA_EMAIL", DEFAULT_EMAIL)
+    password_bitnet = os.getenv("OMADA_PASSWORD", DEFAULT_PASSWORD)
+    dir_bitnet = "/app/dados_omada"
+    
+    email_st1 = os.getenv("OMADA_ST1_EMAIL", "")
+    password_st1 = os.getenv("OMADA_ST1_PASSWORD", "")
+    dir_st1 = "/app/dados_st1_omada"
 
     print("=" * 60)
-    print("  Omada Cloud Data Exporter v2.0 (MODO CLI / DOCKER)")
+    print("  Omada Cloud Data Exporter v2.0 (CLI MULTI-TENANT)")
     print("=" * 60)
-    print(f"E-mail:    {email}")
-    print(f"Intervalo: {interval}s")
-    print(f"Diretório: {download_dir}")
+    print(f"Intervalo Global: {interval}s")
+    print(f"Conta BITNET: {email_bitnet}")
+    if email_st1:
+        print(f"Conta ST1:    {email_st1}")
     print("=" * 60)
 
-    exporter = OmadaExporter(
-        email=email,
-        password=password,
-        interval=interval,
-        download_dir=download_dir,
-        filename=DEFAULT_FILENAME
+    exporter_bitnet = OmadaExporter(
+        email=email_bitnet, password=password_bitnet, interval=interval, 
+        download_dir=dir_bitnet, filename=DEFAULT_FILENAME
     )
+    exporter_bitnet.on_log = lambda msg: print(f"[{datetime.now().strftime('%H:%M:%S')}] [BITNET] {msg}", flush=True)
 
-    def cli_log(msg):
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
+    exporter_st1 = None
+    if email_st1 and password_st1:
+        exporter_st1 = OmadaExporter(
+            email=email_st1, password=password_st1, interval=interval, 
+            download_dir=dir_st1, filename=DEFAULT_FILENAME
+        )
+        exporter_st1.on_log = lambda msg: print(f"[{datetime.now().strftime('%H:%M:%S')}] [ST1] {msg}", flush=True)
 
-    exporter.on_log = cli_log
     try:
-        exporter.run()
+        while True:
+            print("\n" + "="*40)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] INICIANDO CICLO GLOBAL OMADA")
+            print("="*40)
+            
+            print("--- Processando Omada BITNET ---")
+            exporter_bitnet.run_once(skip_logs=False)
+            
+            if exporter_st1:
+                print("--- Processando Omada ST1 ---")
+                exporter_st1.run_once(skip_logs=False)
+                
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo concluído. Aguardando {interval}s...")
+            time.sleep(interval)
+            
     except (KeyboardInterrupt, SystemExit):
         print("\nInterrupção recebida. Parando exportador CLI...")
-        exporter.stop()
-        print("Exportador CLI encerrado.")
 
 
 def main():
