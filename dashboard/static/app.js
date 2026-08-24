@@ -96,10 +96,30 @@ function updateCards() {
     document.getElementById('val-fechar').innerText = (records.fechar || []).length;
 }
 
+// Função para ser chamada quando digitar no input de busca
+function filterTable() {
+    loadTable(currentView);
+}
+
 // Carregar Tabela Embutida
 function loadTable(viewType) {
     currentView = viewType;
-    const records = dashboardData[currentTenant][viewType] || [];
+    let records = dashboardData[currentTenant][viewType] || [];
+
+    // --- FILTRO DE BUSCA ---
+    const searchInput = document.getElementById('search-inep');
+    if (searchInput) {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        if (searchTerm) {
+            records = records.filter(row => {
+                const inepStr = (row['INEP_Extraido'] || row['INEP'] || '').toString().toLowerCase();
+                const nameStr = (row['Nome da Escola'] || row['Escola'] || '').toLowerCase();
+                const cidadeStr = (row['NAME'] || row['Nome'] || '').toLowerCase();
+                return inepStr.includes(searchTerm) || nameStr.includes(searchTerm) || cidadeStr.includes(searchTerm);
+            });
+        }
+    }
+
     const tbody = document.querySelector('#data-table tbody');
     const title = document.getElementById('table-title');
     

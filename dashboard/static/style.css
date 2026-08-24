@@ -210,6 +210,23 @@ th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--bor
 th { color: var(--text-muted); position: sticky; top: 0; background: #1e2532; z-index: 10; font-weight: 600; }
 tr:hover { background: rgba(255,255,255,0.02); }
 
+.search-input {
+    background: #151b23;
+    border: 1px solid var(--border-color);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    width: 300px;
+    transition: all 0.3s;
+}
+.search-input:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(0, 243, 255, 0.2);
+}
+
 .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
 .badge.wait { background: rgba(255,255,255,0.1); color: #ccc; }
 .badge.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.5); }
