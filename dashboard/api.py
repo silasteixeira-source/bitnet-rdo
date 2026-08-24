@@ -21,20 +21,28 @@ SCOPES = [
 ]
 
 def get_gspread_client():
-    import tomllib
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+        
     secrets_path = "/app/.streamlit/secrets.toml"
     if not os.path.exists(secrets_path):
         secrets_path = "../.streamlit/secrets.toml" # Para dev local
         
-    if os.path.exists(secrets_path):
-        with open(secrets_path, "rb") as f:
-            secrets = tomllib.load(f)
-            if "gcp_service_account" in secrets:
-                creds = Credentials.from_service_account_info(secrets["gcp_service_account"], scopes=SCOPES)
-                return gspread.authorize(creds)
+    try:
+        if os.path.exists(secrets_path):
+            with open(secrets_path, "rb") as f:
+                secrets = tomllib.load(f)
+                if "gcp_service_account" in secrets:
+                    creds = Credentials.from_service_account_info(secrets["gcp_service_account"], scopes=SCOPES)
+                    return gspread.authorize(creds)
+    except Exception as e:
+        print(f"Erro ao autenticar: {e}")
+        
     return None
 
-BITNET_URL = "https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit"
+BITNET_URL = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
 ST1_URL = "https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit"
 
 @app.get("/api/data")
