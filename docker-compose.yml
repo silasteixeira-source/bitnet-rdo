@@ -69,3 +69,21 @@ services:
       - ./omada/dados_st1:/app/omada/dados_st1
       - ./.streamlit:/app/.streamlit
     command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "300"]
+
+  # Site Web (Painel Streamlit)
+  streamlit-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rdo_streamlit_web
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./.streamlit:/app/.streamlit
+      - ./omada/dados_omada:/app/omada/dados_omada
+      - ./omada/dados_st1:/app/omada/dados_st1
+      - ./eace/dados_eace:/app/eace/dados_eace
+      - ./eace/dados_st1:/app/eace/dados_st1
