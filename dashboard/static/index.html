@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOC Command Center - BITNET & ST1</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div class="stars"></div>
@@ -16,96 +16,93 @@
             <h1><span class="highlight">NOC</span> COMMAND CENTER</h1>
             <p class="subtitle">Monitoramento Global em Tempo Real</p>
         </div>
+        
+        <!-- Abas Centrais -->
+        <div class="tenant-tabs">
+            <button class="tab-btn active bitnet-tab" onclick="switchTab('bitnet')">BITNET</button>
+            <button class="tab-btn st1-tab" onclick="switchTab('st1')">ST1</button>
+        </div>
+
         <div class="status-bar">
             <div class="time-display" id="clock">00:00:00</div>
             <div class="update-status pulse-green" id="sync-status">Sincronizado</div>
         </div>
     </header>
 
-    <main class="dashboard-grid">
-        <!-- Coluna BITNET -->
-        <section class="tenant-column bitnet-theme">
-            <h2 class="tenant-title">BITNET</h2>
-            
-            <div class="kpi-cards">
-                <div class="card glass">
+    <main class="dashboard-main">
+        <!-- VISÃO BITNET -->
+        <section id="bitnet-view" class="tenant-view active-view bitnet-theme">
+            <div class="kpi-cards-large">
+                <div class="card glass interactive" onclick="openModal('bitnet', 'falta_abrir')">
                     <h3>Falta Abrir OS</h3>
                     <div class="value danger pulse-red" id="bitnet-falta-abrir">0</div>
                     <div class="trend">Offline no Omada</div>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
-                <div class="card glass">
+                <div class="card glass interactive" onclick="openModal('bitnet', 'abertos')">
                     <h3>OS Em Andamento</h3>
                     <div class="value" style="color: #ffaa00;" id="bitnet-abertos">0</div>
                     <div class="trend">Sendo Tratadas</div>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
-                <div class="card glass">
+                <div class="card glass interactive" onclick="openModal('bitnet', 'fechar')">
                     <h3>Falta Fechar OS</h3>
                     <div class="value pulse-green" style="color: var(--success);" id="bitnet-fechar">0</div>
                     <div class="trend">Recuperadas (Online)</div>
-                </div>
-            </div>
-
-            <div class="card glass table-card">
-                <h3>Resumo de Ações Pendentes</h3>
-                <div class="table-wrapper">
-                    <table id="bitnet-table">
-                        <thead>
-                            <tr>
-                                <th>INEP</th>
-                                <th>Escola</th>
-                                <th>Status / Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
             </div>
         </section>
 
-        <!-- Coluna ST1 -->
-        <section class="tenant-column st1-theme">
-            <h2 class="tenant-title">ST1</h2>
-            
-            <div class="kpi-cards">
-                <div class="card glass">
+        <!-- VISÃO ST1 -->
+        <section id="st1-view" class="tenant-view st1-theme">
+            <div class="kpi-cards-large">
+                <div class="card glass interactive" onclick="openModal('st1', 'falta_abrir')">
                     <h3>Falta Abrir OS</h3>
                     <div class="value danger pulse-red" id="st1-falta-abrir">0</div>
                     <div class="trend">Offline no Omada</div>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
-                <div class="card glass">
+                <div class="card glass interactive" onclick="openModal('st1', 'abertos')">
                     <h3>OS Em Andamento</h3>
                     <div class="value" style="color: #ffaa00;" id="st1-abertos">0</div>
                     <div class="trend">Sendo Tratadas</div>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
-                <div class="card glass">
+                <div class="card glass interactive" onclick="openModal('st1', 'fechar')">
                     <h3>Falta Fechar OS</h3>
                     <div class="value pulse-green" style="color: var(--success);" id="st1-fechar">0</div>
                     <div class="trend">Recuperadas (Online)</div>
-                </div>
-            </div>
-
-            <div class="card glass table-card">
-                <h3>Resumo de Ações Pendentes</h3>
-                <div class="table-wrapper">
-                    <table id="st1-table">
-                        <thead>
-                            <tr>
-                                <th>INEP</th>
-                                <th>Escola</th>
-                                <th>Status / Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Preenchido via JS -->
-                        </tbody>
-                    </table>
+                    <div class="click-hint">Clique para ver lista</div>
                 </div>
             </div>
         </section>
     </main>
 
-    <script src="app.js?v=2"></script>
+    <!-- Modal Flutuante para as Tabelas -->
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h2 id="modal-title">Detalhes</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="table-wrapper large">
+                <table id="modal-table">
+                    <thead>
+                        <tr>
+                            <th>INEP</th>
+                            <th>Escola</th>
+                            <th>Status / Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=3"></script>
 </body>
 </html>
