@@ -15,6 +15,13 @@ updateClock();
 function switchTenant(tenant) {
     currentTenant = tenant;
     
+    // Troca a cor tema principal
+    if (tenant === 'st1') {
+        document.documentElement.style.setProperty('--cyan', '#bc13fe'); // Roxo ST1
+    } else {
+        document.documentElement.style.setProperty('--cyan', '#00f3ff'); // Ciano Bitnet
+    }
+
     // Atualiza menu
     document.getElementById('btn-bitnet').classList.remove('active');
     document.getElementById('btn-st1').classList.remove('active');
