@@ -3,106 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOC Command Center - BITNET & ST1</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=5">
+    <title>NOC Command Center</title>
+    <!-- Fontes modernas -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
-    <div class="stars"></div>
-    <div class="twinkling"></div>
+    <!-- Background estático elegante -->
+    <div class="bg-gradient"></div>
 
-    <header class="dashboard-header">
-        <div class="logo">
-            <h1><span class="highlight">NOC</span> COMMAND CENTER</h1>
-            <p class="subtitle">Monitoramento Global em Tempo Real</p>
-        </div>
+    <div class="app-window">
         
-        <!-- Abas Centrais -->
-        <div class="tenant-tabs">
-            <button class="tab-btn active bitnet-tab" onclick="switchTab('bitnet')">BITNET</button>
-            <button class="tab-btn st1-tab" onclick="switchTab('st1')">ST1</button>
-        </div>
-
-        <div class="status-bar">
-            <div class="time-display" id="clock">00:00:00</div>
-            <div class="update-status pulse-green" id="sync-status">Sincronizado</div>
-        </div>
-    </header>
-
-    <main class="dashboard-main">
-        <!-- VISÃO BITNET -->
-        <section id="bitnet-view" class="tenant-view active-view bitnet-theme">
-            <div class="kpi-cards-large">
-                <div class="card glass interactive" onclick="openModal('bitnet', 'falta_abrir')">
-                    <h3>Falta Abrir OS</h3>
-                    <div class="value danger pulse-red" id="bitnet-falta-abrir">0</div>
-                    <div class="trend">Offline no Omada</div>
-                    <div class="click-hint">Clique para ver lista</div>
-                </div>
-                <div class="card glass interactive" onclick="openModal('bitnet', 'abertos')">
-                    <h3>OS Em Andamento</h3>
-                    <div class="value" style="color: #ffaa00;" id="bitnet-abertos">0</div>
-                    <div class="trend">Sendo Tratadas</div>
-                    <div class="click-hint">Clique para ver lista</div>
-                </div>
-                <div class="card glass interactive" onclick="openModal('bitnet', 'fechar')">
-                    <h3>Falta Fechar OS</h3>
-                    <div class="value pulse-green" style="color: var(--success);" id="bitnet-fechar">0</div>
-                    <div class="trend">Recuperadas (Online)</div>
-                    <div class="click-hint">Clique para ver lista</div>
-                </div>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="menu-icon active" id="btn-bitnet" onclick="switchTenant('bitnet')" title="BITNET">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             </div>
-        </section>
+            <div class="menu-icon" id="btn-st1" onclick="switchTenant('st1')" title="ST1">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            </div>
+        </aside>
 
-        <!-- VISÃO ST1 -->
-        <section id="st1-view" class="tenant-view st1-theme">
-            <div class="kpi-cards-large">
-                <div class="card glass interactive" onclick="openModal('st1', 'falta_abrir')">
-                    <h3>Falta Abrir OS</h3>
-                    <div class="value danger pulse-red" id="st1-falta-abrir">0</div>
-                    <div class="trend">Offline no Omada</div>
-                    <div class="click-hint">Clique para ver lista</div>
+        <div class="main-content">
+            
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="logo-area">
+                    <h1 class="logo-text"><span class="highlight">NOC</span> COMMAND CENTER</h1>
+                    <span class="tenant-label" id="current-tenant-label">BITNET</span>
                 </div>
-                <div class="card glass interactive" onclick="openModal('st1', 'abertos')">
-                    <h3>OS Em Andamento</h3>
-                    <div class="value" style="color: #ffaa00;" id="st1-abertos">0</div>
-                    <div class="trend">Sendo Tratadas</div>
-                    <div class="click-hint">Clique para ver lista</div>
-                </div>
-                <div class="card glass interactive" onclick="openModal('st1', 'fechar')">
-                    <h3>Falta Fechar OS</h3>
-                    <div class="value pulse-green" style="color: var(--success);" id="st1-fechar">0</div>
-                    <div class="trend">Recuperadas (Online)</div>
-                    <div class="click-hint">Clique para ver lista</div>
-                </div>
-            </div>
-        </section>
-    </main>
+                
+                <div class="center-title">Monitoramento Global em Tempo Real</div>
 
-    <!-- Modal Flutuante para as Tabelas -->
-    <div id="details-modal" class="modal-overlay">
-        <div class="modal-content glass">
-            <div class="modal-header">
-                <h2 id="modal-title">Detalhes</h2>
-                <button class="close-btn" onclick="closeModal()">×</button>
-            </div>
-            <div class="table-wrapper large">
-                <table id="modal-table">
-                    <thead>
-                        <tr>
-                            <th>INEP</th>
-                            <th>Escola</th>
-                            <th>Status / Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Preenchido via JS -->
-                    </tbody>
-                </table>
-            </div>
+                <div class="clock-area">
+                    <div class="time" id="clock">00:00:00</div>
+                    <div class="sync-status" id="sync-status">SYNCHRONIZED</div>
+                </div>
+            </header>
+
+            <!-- MIDDLE SECTION (CARDS) -->
+            <section class="cards-grid">
+                
+                <!-- Card Falta Abrir -->
+                <div class="kpi-card card-danger">
+                    <div class="card-header">FALTA ABRIR OS</div>
+                    <div class="card-body">
+                        <div class="value-box" id="val-falta-abrir">0</div>
+                        <p class="desc">Dispositivos Offline no Omada</p>
+                        <div class="icon-warning">⚠️</div>
+                    </div>
+                    <button class="action-btn" onclick="loadTable('falta_abrir')">Listar Ocorrências</button>
+                </div>
+
+                <!-- Card Andamento -->
+                <div class="kpi-card card-warning">
+                    <div class="card-header">OS EM ANDAMENTO</div>
+                    <div class="card-body">
+                        <div class="value-box" id="val-abertos">0</div>
+                        <p class="desc">Chamados em Tratamento</p>
+                        <div class="icon-warning">⚙️</div>
+                    </div>
+                    <button class="action-btn" onclick="loadTable('abertos')">Gerenciar OS</button>
+                </div>
+
+                <!-- Card Fechar -->
+                <div class="kpi-card card-success">
+                    <div class="card-header">FALTA FECHAR OS</div>
+                    <div class="card-body">
+                        <div class="value-box" id="val-fechar">0</div>
+                        <p class="desc">Links Recuperados</p>
+                        <div class="icon-warning">✔️</div>
+                    </div>
+                    <button class="action-btn" onclick="loadTable('fechar')">Validar Fechamento</button>
+                </div>
+
+                <!-- Painel Lateral Decorativo (Status) -->
+                <div class="side-panel">
+                    <div class="panel-box">
+                        <div class="panel-title">
+                            <span class="dot red"></span> LIVE ALERTS
+                        </div>
+                        <ul class="alert-list">
+                            <li>Processando planilhas do Google...</li>
+                            <li>Sincronizando via gspread...</li>
+                            <li>Monitorando via Omada Controller...</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="panel-box mt-10">
+                        <div class="panel-title">STATUS NETWORK</div>
+                        <div class="status-row">
+                            <span>Sincronização API</span>
+                            <span class="text-green">● OK</span>
+                        </div>
+                        <div class="status-row">
+                            <span>Última Checagem</span>
+                            <span class="text-gray" id="last-check">Agora</span>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- BOTTOM SECTION (TABLE) -->
+            <section class="table-section">
+                <div class="table-header">
+                    <h3 id="table-title">DETALHES DE OCORRÊNCIAS - FALTA ABRIR OS</h3>
+                </div>
+                <div class="table-container">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>INEP</th>
+                                <th>ESCOLA</th>
+                                <th>STATUS</th>
+                                <th>AÇÃO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Linhas inseridas pelo JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </div>
     </div>
 
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>

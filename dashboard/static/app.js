@@ -1,135 +1,124 @@
-// Variável global para armazenar os dados carregados e poder usar nos Modais
 let dashboardData = null;
+let currentTenant = 'bitnet';
+let currentView = 'falta_abrir';
 
-// Relógio do cabeçalho
+// Relógio
 function updateClock() {
     const now = new Date();
     document.getElementById('clock').innerText = now.toLocaleTimeString('pt-BR');
+    document.getElementById('last-check').innerText = now.toLocaleTimeString('pt-BR');
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// Função de alternar Abas (BITNET / ST1)
-function switchTab(tenant) {
-    // Esconde tudo
-    document.getElementById('bitnet-view').classList.remove('active-view');
-    document.getElementById('st1-view').classList.remove('active-view');
-    document.querySelector('.bitnet-tab').classList.remove('active');
-    document.querySelector('.st1-tab').classList.remove('active');
+// Alternar entre Bitnet e ST1
+function switchTenant(tenant) {
+    currentTenant = tenant;
+    
+    // Atualiza menu
+    document.getElementById('btn-bitnet').classList.remove('active');
+    document.getElementById('btn-st1').classList.remove('active');
+    document.getElementById(`btn-${tenant}`).classList.add('active');
 
-    // Mostra o clicado
-    document.getElementById(`${tenant}-view`).classList.add('active-view');
-    document.querySelector(`.${tenant}-tab`).classList.add('active');
+    // Atualiza Label
+    document.getElementById('current-tenant-label').innerText = tenant.toUpperCase();
+
+    // Atualiza a tela se os dados já chegaram
+    if (dashboardData) {
+        updateCards();
+        loadTable(currentView);
+    }
 }
 
-// Função para buscar dados da API FastAPI
+// Buscar API
 async function fetchDashboardData() {
     const statusEl = document.getElementById('sync-status');
     try {
-        statusEl.innerText = 'Sincronizando...';
-        statusEl.className = 'update-status';
+        statusEl.innerText = 'SYNCING...';
+        statusEl.style.color = 'var(--warning)';
 
-        // O ?t= impede cache do JSON
         const response = await fetch(`/api/data?t=${new Date().getTime()}`);
         const data = await response.json();
 
         if (data.error) {
-            console.error(data.error);
-            statusEl.innerText = 'Erro de Credenciais';
-            statusEl.className = 'update-status pulse-red';
+            statusEl.innerText = 'ERROR';
+            statusEl.style.color = 'var(--danger)';
             return;
         }
 
-        // Salva globalmente
         dashboardData = data;
+        updateCards();
+        loadTable(currentView);
 
-        updateTenantCards('bitnet', data.bitnet);
-        updateTenantCards('st1', data.st1);
-
-        statusEl.innerText = 'Sincronizado';
-        statusEl.className = 'update-status pulse-green';
+        statusEl.innerText = 'SYNCHRONIZED';
+        statusEl.style.color = 'var(--success)';
     } catch (error) {
-        console.error("Erro na API:", error);
-        statusEl.innerText = 'Falha de Conexão';
-        statusEl.className = 'update-status pulse-red';
+        statusEl.innerText = 'OFFLINE';
+        statusEl.style.color = 'var(--danger)';
     }
 }
 
-// Atualiza apenas os NÚMEROS dos Cards
-function updateTenantCards(tenantId, records) {
+// Atualizar Números nos Cards
+function updateCards() {
+    const records = dashboardData[currentTenant];
     if (!records) return;
 
-    const faltaAbrir = records.falta_abrir || [];
-    const abertos = records.abertos || [];
-    const fechar = records.fechar || [];
-
-    document.getElementById(`${tenantId}-falta-abrir`).innerText = faltaAbrir.length;
-    document.getElementById(`${tenantId}-abertos`).innerText = abertos.length;
-    document.getElementById(`${tenantId}-fechar`).innerText = fechar.length;
+    document.getElementById('val-falta-abrir').innerText = (records.falta_abrir || []).length;
+    document.getElementById('val-abertos').innerText = (records.abertos || []).length;
+    document.getElementById('val-fechar').innerText = (records.fechar || []).length;
 }
 
-// Função para ABRIR O MODAL
-function openModal(tenantId, tipo) {
-    if (!dashboardData || !dashboardData[tenantId]) return;
-
-    const registros = dashboardData[tenantId][tipo] || [];
-    const tbody = document.querySelector('#modal-table tbody');
-    const modalTitle = document.getElementById('modal-title');
+// Carregar Tabela Embutida
+function loadTable(viewType) {
+    currentView = viewType;
+    const records = dashboardData[currentTenant][viewType] || [];
+    const tbody = document.querySelector('#data-table tbody');
+    const title = document.getElementById('table-title');
     
     let html = '';
 
-    // Define o título e constrói as linhas dependendo do balão clicado
-    if (tipo === 'falta_abrir') {
-        modalTitle.innerText = `${tenantId.toUpperCase()} - Falta Abrir OS (${registros.length})`;
-        registros.forEach(row => {
+    if (viewType === 'falta_abrir') {
+        title.innerText = `DETALHES DE OCORRÊNCIAS - FALTA ABRIR OS (${records.length})`;
+        records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
             const regra = row['Regra de Abertura (4h Offline)'] || 'Verificar';
-            // Se tiver o ícone ✅ na regra, a gente pinta de vermelho pedindo pra abrir
-            const badgeClass = regra.includes('✅') ? 'warn pulse-red' : 'wait';
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td></tr>`;
+            
+            let badgeClass = 'wait';
+            if (regra.includes('✅')) badgeClass = 'danger'; // Pode Abrir (Ação necessária)
+            
+            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">ABRIR CHAMADO</button></td></tr>`;
         });
     } 
-    else if (tipo === 'abertos') {
-        modalTitle.innerText = `${tenantId.toUpperCase()} - OS Em Andamento (${registros.length})`;
-        registros.forEach(row => {
+    else if (viewType === 'abertos') {
+        title.innerText = `DETALHES DE OCORRÊNCIAS - OS EM ANDAMENTO (${records.length})`;
+        records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
             const ticket = row['Ticket#'] || 'OS';
             const status = row['Status'] || 'Análise';
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00;">${ticket} - ${status}</span></td></tr>`;
+            
+            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge warning">${ticket} - ${status}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VER DETALHES</button></td></tr>`;
         });
     } 
-    else if (tipo === 'fechar') {
-        modalTitle.innerText = `${tenantId.toUpperCase()} - Falta Fechar OS (${registros.length})`;
-        registros.forEach(row => {
+    else if (viewType === 'fechar') {
+        title.innerText = `DETALHES DE OCORRÊNCIAS - FALTA FECHAR OS (${records.length})`;
+        records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
             const ticket = row['Ticket#'] || 'OS';
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge ok pulse-green">FECHAR ${ticket}</span></td></tr>`;
+            
+            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge success">FECHAR ${ticket}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VALIDAR</button></td></tr>`;
         });
     }
 
     if (html === '') {
-        html = '<tr><td colspan="3" style="text-align: center; padding: 30px; color: var(--success); font-size: 1.5rem;">Nada pendente nesta categoria! 🎉</td></tr>';
+        html = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: var(--success);">Tudo Operacional! Nenhuma ação pendente.</td></tr>';
     }
 
     tbody.innerHTML = html;
-    
-    // Abre a janela
-    document.getElementById('details-modal').classList.add('open');
 }
 
-// Fechar modal
-function closeModal() {
-    document.getElementById('details-modal').classList.remove('open');
-}
-
-// Fecha o modal ao clicar fora dele
-document.getElementById('details-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
-
-// Busca inicial e depois a cada 30 segundos
+// Inicia
 fetchDashboardData();
 setInterval(fetchDashboardData, 30000);
