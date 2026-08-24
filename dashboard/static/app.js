@@ -82,12 +82,14 @@ function loadTable(viewType) {
         records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+            const nameField = row['NAME'] || row['Nome'] || '';
+            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
             const regra = row['Regra de Abertura (4h Offline)'] || 'Verificar';
             
             let badgeClass = 'wait';
             if (regra.includes('✅')) badgeClass = 'danger'; // Pode Abrir (Ação necessária)
             
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">ABRIR CHAMADO</button></td></tr>`;
+            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">ABRIR CHAMADO</button></td></tr>`;
         });
     } 
     else if (viewType === 'abertos') {
@@ -95,10 +97,12 @@ function loadTable(viewType) {
         records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+            const nameField = row['NAME'] || row['Nome'] || '';
+            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
             const ticket = row['Ticket#'] || 'OS';
             const status = row['Status'] || 'Análise';
             
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge warning">${ticket} - ${status}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VER DETALHES</button></td></tr>`;
+            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge warning">${ticket} - ${status}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VER DETALHES</button></td></tr>`;
         });
     } 
     else if (viewType === 'fechar') {
@@ -106,9 +110,11 @@ function loadTable(viewType) {
         records.forEach(row => {
             const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+            const nameField = row['NAME'] || row['Nome'] || '';
+            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
             const ticket = row['Ticket#'] || 'OS';
             
-            html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge success">FECHAR ${ticket}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VALIDAR</button></td></tr>`;
+            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge success">FECHAR ${ticket}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VALIDAR</button></td></tr>`;
         });
     }
 
