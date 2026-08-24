@@ -6,7 +6,7 @@
     <title>NOC Command Center</title>
     <!-- Fontes modernas -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
     <!-- Background estático elegante -->
@@ -50,7 +50,6 @@
                     <div class="card-body">
                         <div class="value-box" id="val-falta-abrir">0</div>
                         <p class="desc">Dispositivos Offline no Omada</p>
-                        <div class="icon-warning">⚠️</div>
                     </div>
                     <button class="action-btn" onclick="loadTable('falta_abrir')">Listar Ocorrências</button>
                 </div>
@@ -61,7 +60,6 @@
                     <div class="card-body">
                         <div class="value-box" id="val-abertos">0</div>
                         <p class="desc">Chamados em Tratamento</p>
-                        <div class="icon-warning">⚙️</div>
                     </div>
                     <button class="action-btn" onclick="loadTable('abertos')">Gerenciar OS</button>
                 </div>
@@ -72,7 +70,6 @@
                     <div class="card-body">
                         <div class="value-box" id="val-fechar">0</div>
                         <p class="desc">Links Recuperados</p>
-                        <div class="icon-warning">✔️</div>
                     </div>
                     <button class="action-btn" onclick="loadTable('fechar')">Validar Fechamento</button>
                 </div>
@@ -131,6 +128,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>
