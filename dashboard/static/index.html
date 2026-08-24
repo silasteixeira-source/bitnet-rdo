@@ -6,7 +6,7 @@
     <title>NOC Command Center</title>
     <!-- Fontes modernas -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
     <!-- Background estático elegante -->
@@ -48,7 +48,7 @@
                 <div class="kpi-card card-danger">
                     <div class="card-header">FALTA ABRIR OS</div>
                     <div class="card-body">
-                        <div class="value-box" id="val-falta-abrir">0</div>
+                        <div class="value-box" id="val-falta-abrir">-</div>
                         <p class="desc">Dispositivos Offline no Omada</p>
                     </div>
                     <button class="action-btn" onclick="loadTable('falta_abrir')">Listar Ocorrências</button>
@@ -58,7 +58,7 @@
                 <div class="kpi-card card-warning">
                     <div class="card-header">OS EM ANDAMENTO</div>
                     <div class="card-body">
-                        <div class="value-box" id="val-abertos">0</div>
+                        <div class="value-box" id="val-abertos">-</div>
                         <p class="desc">Chamados em Tratamento</p>
                     </div>
                     <button class="action-btn" onclick="loadTable('abertos')">Gerenciar OS</button>
@@ -68,7 +68,7 @@
                 <div class="kpi-card card-success">
                     <div class="card-header">FALTA FECHAR OS</div>
                     <div class="card-body">
-                        <div class="value-box" id="val-fechar">0</div>
+                        <div class="value-box" id="val-fechar">-</div>
                         <p class="desc">Links Recuperados</p>
                     </div>
                     <button class="action-btn" onclick="loadTable('fechar')">Validar Fechamento</button>
@@ -105,7 +105,7 @@
             <!-- BOTTOM SECTION (TABLE) -->
             <section class="table-section">
                 <div class="table-header">
-                    <h3 id="table-title">DETALHES DE OCORRÊNCIAS - FALTA ABRIR OS</h3>
+                    <h2 class="table-title" id="table-title">DETALHES DE OCORRÊNCIAS - CARREGANDO...</h2>
                 </div>
                 <div class="table-container">
                     <table id="data-table">
@@ -118,16 +118,15 @@
                                 <th>AÇÃO</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- Linhas inseridas pelo JS -->
+                        <tbody id="table-body">
+                            <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Conectando com o Google Sheets...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </section>
-
         </div>
     </div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>

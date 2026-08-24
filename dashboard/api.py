@@ -67,30 +67,20 @@ def get_dashboard_data():
     data = {"bitnet": {}, "st1": {}}
 
     def fetch_tenant(url, tenant_key):
-        try:
-            wb = client.open_by_url(url)
-            
-            # Tenta buscar cada aba e lida graciosamente se estiver vazia ou não existir
+        wb = client.open_by_url(url)
+        for ws_name, dict_key in [("Falta_Abrir_Chamado", "falta_abrir"), 
+                                  ("Chamados_Abertos", "abertos"), 
+                                  ("Fechar_Chamado_Recup", "fechar")]:
             try:
-                data[tenant_key]["falta_abrir"] = wb.worksheet("Falta_Abrir_Chamado").get_all_records()
-            except:
-                data[tenant_key]["falta_abrir"] = []
-                
-            try:
-                data[tenant_key]["abertos"] = wb.worksheet("Chamados_Abertos").get_all_records()
-            except:
-                data[tenant_key]["abertos"] = []
-                
-            try:
-                data[tenant_key]["fechar"] = wb.worksheet("Fechar_Chamado_Recup").get_all_records()
-            except:
-                data[tenant_key]["fechar"] = []
-                
-        except Exception as e:
-            print(f"Erro geral ao ler {tenant_key}: {e}")
+                data[tenant_key][dict_key] = wb.worksheet(ws_name).get_all_records()
+            except gspread.exceptions.WorksheetNotFound:
+                data[tenant_key][dict_key] = []
 
-    fetch_tenant(BITNET_URL, "bitnet")
-    fetch_tenant(ST1_URL, "st1")
+    try:
+        fetch_tenant(BITNET_URL, "bitnet")
+        fetch_tenant(ST1_URL, "st1")
+    except Exception as e:
+        return {"error": f"Erro de API do Google: {str(e)}"}
 
     # Salva no cache
     if data["bitnet"] and data["st1"]:
