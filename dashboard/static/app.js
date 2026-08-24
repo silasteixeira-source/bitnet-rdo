@@ -56,6 +56,21 @@ async function fetchDashboardData() {
             throw new Error("Planilha retornou vazia (rate limit)");
         }
 
+        // --- BLINDAGEM CONTRA PLANILHAS ZERADAS ---
+        // Se as três abas de um tenant vierem zeradas, assumimos que o robô do cliente
+        // está no meio de uma atualização (wiping). Então mantemos os dados antigos!
+        if (dashboardData) {
+            const isBitnetEmpty = data.bitnet.falta_abrir.length === 0 && data.bitnet.abertos.length === 0 && data.bitnet.fechar.length === 0;
+            if (isBitnetEmpty) {
+                data.bitnet = dashboardData.bitnet;
+            }
+            
+            const isSt1Empty = data.st1.falta_abrir.length === 0 && data.st1.abertos.length === 0 && data.st1.fechar.length === 0;
+            if (isSt1Empty) {
+                data.st1 = dashboardData.st1;
+            }
+        }
+
         dashboardData = data;
         updateCards();
         loadTable(currentView);
