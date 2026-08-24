@@ -22,7 +22,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código do robô EACE e do Unificador Automático
 COPY eace/eace_os_exporter.py .
 COPY unificador_auto.py .
-COPY read_excel.py .
 COPY utils_omada.py .
 
 # Volume persistente para salvar a planilha em dados_eace na VPS
