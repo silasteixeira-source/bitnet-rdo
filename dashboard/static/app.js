@@ -86,7 +86,7 @@ function openModal(tenantId, tipo) {
             const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
             const regra = row['Regra de Abertura (4h Offline)'] || 'Verificar';
             // Se tiver o ícone ✅ na regra, a gente pinta de vermelho pedindo pra abrir
-            const badgeClass = regra.includes('✅') ? 'warn pulse-red' : '';
+            const badgeClass = regra.includes('✅') ? 'warn pulse-red' : 'wait';
             html += `<tr><td>${inep}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td></tr>`;
         });
     } 
