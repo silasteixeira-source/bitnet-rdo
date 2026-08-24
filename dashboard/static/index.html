@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOC Command Center - BITNET & ST1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="twinkling"></div>
+
+    <header class="dashboard-header">
+        <div class="logo">
+            <h1><span class="highlight">NOC</span> COMMAND CENTER</h1>
+            <p class="subtitle">Monitoramento Global em Tempo Real</p>
+        </div>
+        <div class="status-bar">
+            <div class="time-display" id="clock">00:00:00</div>
+            <div class="update-status pulse-green" id="sync-status">Sincronizado</div>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- Coluna BITNET -->
+        <section class="tenant-column bitnet-theme">
+            <h2 class="tenant-title">BITNET</h2>
+            
+            <div class="kpi-cards">
+                <div class="card glass">
+                    <h3>Controladoras Offline</h3>
+                    <div class="value" id="bitnet-offline">0</div>
+                    <div class="trend" id="bitnet-trend">Aguardando dados...</div>
+                </div>
+                
+                <div class="card glass">
+                    <h3>Sem Chamado</h3>
+                    <div class="value danger pulse-red" id="bitnet-no-ticket">0</div>
+                    <div class="trend">Ação Imediata Necessária</div>
+                </div>
+            </div>
+
+            <div class="card glass table-card">
+                <h3>Escolas Offline Recentes</h3>
+                <div class="table-wrapper">
+                    <table id="bitnet-table">
+                        <thead>
+                            <tr>
+                                <th>INEP</th>
+                                <th>Escola</th>
+                                <th>Status RDO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Coluna ST1 -->
+        <section class="tenant-column st1-theme">
+            <h2 class="tenant-title">ST1</h2>
+            
+            <div class="kpi-cards">
+                <div class="card glass">
+                    <h3>Controladoras Offline</h3>
+                    <div class="value" id="st1-offline">0</div>
+                    <div class="trend" id="st1-trend">Aguardando dados...</div>
+                </div>
+                
+                <div class="card glass">
+                    <h3>Sem Chamado</h3>
+                    <div class="value danger pulse-red" id="st1-no-ticket">0</div>
+                    <div class="trend">Ação Imediata Necessária</div>
+                </div>
+            </div>
+
+            <div class="card glass table-card">
+                <h3>Escolas Offline Recentes</h3>
+                <div class="table-wrapper">
+                    <table id="st1-table">
+                        <thead>
+                            <tr>
+                                <th>INEP</th>
+                                <th>Escola</th>
+                                <th>Status RDO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
