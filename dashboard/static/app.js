@@ -48,9 +48,12 @@ async function fetchDashboardData() {
         const data = await response.json();
 
         if (data.error) {
-            statusEl.innerText = 'ERROR';
-            statusEl.style.color = 'var(--danger)';
-            return;
+            throw new Error(data.error);
+        }
+
+        // Se veio vazio (Google Rate Limit), aborta sem zerar o cache local
+        if (!data.bitnet || Object.keys(data.bitnet).length === 0) {
+            throw new Error("Planilha retornou vazia (rate limit)");
         }
 
         dashboardData = data;
@@ -60,8 +63,11 @@ async function fetchDashboardData() {
         statusEl.innerText = 'SYNCHRONIZED';
         statusEl.style.color = 'var(--success)';
     } catch (error) {
-        statusEl.innerText = 'OFFLINE';
-        statusEl.style.color = 'var(--danger)';
+        console.error("Erro no Sync:", error);
+        statusEl.innerText = 'RETRYING...';
+        statusEl.style.color = 'var(--warning)';
+        // Importante: NÃO zeramos a variável dashboardData.
+        // Assim o painel continua mostrando os dados antigos enquanto tenta reconectar!
     }
 }
 

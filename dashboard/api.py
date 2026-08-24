@@ -45,8 +45,21 @@ def get_gspread_client():
 BITNET_URL = "https://docs.google.com/spreadsheets/d/167LUrFFBJBlQ-Jh7cX717r32F2c8tfq1zsx_0FIC0WY/edit"
 ST1_URL = "https://docs.google.com/spreadsheets/d/1jMc7SW8ECb49j1LP8W879Xz-wyxudkkMYCH9s7nKVdU/edit"
 
+import time
+API_CACHE = {
+    "data": None,
+    "last_fetch": 0
+}
+
 @app.get("/api/data")
 def get_dashboard_data():
+    global API_CACHE
+    now = time.time()
+    
+    # Se o último fetch foi há menos de 15 segundos, retorna o cache da memória RAM
+    if API_CACHE["data"] and (now - API_CACHE["last_fetch"] < 15):
+        return API_CACHE["data"]
+
     client = get_gspread_client()
     if not client:
         return {"error": "Credenciais do Google não encontradas."}
@@ -78,6 +91,11 @@ def get_dashboard_data():
 
     fetch_tenant(BITNET_URL, "bitnet")
     fetch_tenant(ST1_URL, "st1")
+
+    # Salva no cache
+    if data["bitnet"] and data["st1"]:
+        API_CACHE["data"] = data
+        API_CACHE["last_fetch"] = now
 
     return data
 
