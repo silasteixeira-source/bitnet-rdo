@@ -37,60 +37,64 @@ async function fetchDashboardData() {
 
 // Atualiza o HTML das colunas
 function updateTenantUI(tenantId, records) {
-    if (!records || records.length === 0) return;
+    if (!records) return;
 
-    // Filtra apenas as escolas Offline no Omada
-    const offlineSchools = records.filter(row => row['Status Omada'] === 'Offline');
+    const faltaAbrir = records.falta_abrir || [];
+    const abertos = records.abertos || [];
+    const fechar = records.fechar || [];
+
+    // Atualiza contadores
+    document.getElementById(`${tenantId}-falta-abrir`).innerText = faltaAbrir.length;
+    document.getElementById(`${tenantId}-abertos`).innerText = abertos.length;
+    document.getElementById(`${tenantId}-fechar`).innerText = fechar.length;
     
-    let totalOffline = offlineSchools.length;
-    let noTicketCount = 0;
     let tableHtml = '';
 
-    offlineSchools.forEach(row => {
-        const inep = row['INEP'] || 'N/A';
-        const name = row['Escola'] || 'Desconhecida';
-        const rdoStatus = row['Status RDO'] || 'Sem Registro';
-        const hasTicket = row['Nº OS Bubble'] || row['Data/Hora RDO'];
-        
-        let badgeClass = 'warn';
-        let badgeText = rdoStatus;
-
-        if (hasTicket && rdoStatus !== 'Sem Registro') {
-            badgeClass = 'ok';
-        } else {
-            noTicketCount++;
-            badgeText = 'FALTA ABRIR OS';
-        }
-
+    // Adiciona linhas: Falta Abrir
+    faltaAbrir.forEach(row => {
+        const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
+        const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
         tableHtml += `
             <tr>
                 <td>${inep}</td>
                 <td>${name}</td>
-                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                <td><span class="badge warn pulse-red">ABRIR CHAMADO</span></td>
             </tr>
         `;
     });
 
-    // Atualiza contadores
-    document.getElementById(`${tenantId}-offline`).innerText = totalOffline;
-    
-    const noTicketEl = document.getElementById(`${tenantId}-no-ticket`);
-    noTicketEl.innerText = noTicketCount;
-    if (noTicketCount > 0) {
-        noTicketEl.className = 'value danger pulse-red';
-    } else {
-        noTicketEl.className = 'value';
-        noTicketEl.style.color = 'var(--success)';
-        noTicketEl.innerText = '0';
-    }
+    // Adiciona linhas: Fechar OS
+    fechar.forEach(row => {
+        const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
+        const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+        const ticket = row['Ticket#'] || 'OS';
+        tableHtml += `
+            <tr>
+                <td>${inep}</td>
+                <td>${name}</td>
+                <td><span class="badge ok pulse-green">FECHAR ${ticket}</span></td>
+            </tr>
+        `;
+    });
 
-    // Atualiza tendências visuais
-    document.getElementById(`${tenantId}-trend`).innerText = `Em ${records.length} escolas conectadas`;
+    // Adiciona linhas: Abertos
+    abertos.forEach(row => {
+        const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
+        const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+        const ticket = row['Ticket#'] || 'OS';
+        tableHtml += `
+            <tr>
+                <td>${inep}</td>
+                <td>${name}</td>
+                <td><span class="badge" style="background: rgba(255, 170, 0, 0.2); color: #ffaa00;">${ticket} ANDAMENTO</span></td>
+            </tr>
+        `;
+    });
 
     // Atualiza Tabela
     const tbody = document.querySelector(`#${tenantId}-table tbody`);
     if (tableHtml === '') {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--success);">Tudo Operacional! Nenhuma escola offline.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--success);">Tudo Operacional! Nenhuma ação pendente.</td></tr>';
     } else {
         tbody.innerHTML = tableHtml;
     }

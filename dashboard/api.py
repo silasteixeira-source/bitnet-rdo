@@ -43,23 +43,33 @@ def get_dashboard_data():
     if not client:
         return {"error": "Credenciais do Google não encontradas."}
 
-    data = {"bitnet": [], "st1": []}
+    data = {"bitnet": {}, "st1": {}}
 
-    try:
-        # Puxa BITNET
-        sheet_bitnet = client.open_by_url(BITNET_URL).worksheet("NOC")
-        df_bitnet = pd.DataFrame(sheet_bitnet.get_all_records())
-        data["bitnet"] = df_bitnet.to_dict(orient="records")
-    except Exception as e:
-        print(f"Erro ao ler BITNET: {e}")
+    def fetch_tenant(url, tenant_key):
+        try:
+            wb = client.open_by_url(url)
+            
+            # Tenta buscar cada aba e lida graciosamente se estiver vazia ou não existir
+            try:
+                data[tenant_key]["falta_abrir"] = wb.worksheet("Falta_Abrir_Chamado").get_all_records()
+            except:
+                data[tenant_key]["falta_abrir"] = []
+                
+            try:
+                data[tenant_key]["abertos"] = wb.worksheet("Chamados_Abertos").get_all_records()
+            except:
+                data[tenant_key]["abertos"] = []
+                
+            try:
+                data[tenant_key]["fechar"] = wb.worksheet("Fechar_Chamado_Recup").get_all_records()
+            except:
+                data[tenant_key]["fechar"] = []
+                
+        except Exception as e:
+            print(f"Erro geral ao ler {tenant_key}: {e}")
 
-    try:
-        # Puxa ST1
-        sheet_st1 = client.open_by_url(ST1_URL).worksheet("NOC")
-        df_st1 = pd.DataFrame(sheet_st1.get_all_records())
-        data["st1"] = df_st1.to_dict(orient="records")
-    except Exception as e:
-        print(f"Erro ao ler ST1: {e}")
+    fetch_tenant(BITNET_URL, "bitnet")
+    fetch_tenant(ST1_URL, "st1")
 
     return data
 

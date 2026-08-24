@@ -29,27 +29,31 @@
             
             <div class="kpi-cards">
                 <div class="card glass">
-                    <h3>Controladoras Offline</h3>
-                    <div class="value" id="bitnet-offline">0</div>
-                    <div class="trend" id="bitnet-trend">Aguardando dados...</div>
+                    <h3>Falta Abrir OS</h3>
+                    <div class="value danger pulse-red" id="bitnet-falta-abrir">0</div>
+                    <div class="trend">Offline no Omada</div>
                 </div>
-                
                 <div class="card glass">
-                    <h3>Sem Chamado</h3>
-                    <div class="value danger pulse-red" id="bitnet-no-ticket">0</div>
-                    <div class="trend">Ação Imediata Necessária</div>
+                    <h3>OS Em Andamento</h3>
+                    <div class="value" style="color: #ffaa00;" id="bitnet-abertos">0</div>
+                    <div class="trend">Sendo Tratadas</div>
+                </div>
+                <div class="card glass">
+                    <h3>Falta Fechar OS</h3>
+                    <div class="value pulse-green" style="color: var(--success);" id="bitnet-fechar">0</div>
+                    <div class="trend">Recuperadas (Online)</div>
                 </div>
             </div>
 
             <div class="card glass table-card">
-                <h3>Escolas Offline Recentes</h3>
+                <h3>Resumo de Ações Pendentes</h3>
                 <div class="table-wrapper">
                     <table id="bitnet-table">
                         <thead>
                             <tr>
                                 <th>INEP</th>
                                 <th>Escola</th>
-                                <th>Status RDO</th>
+                                <th>Status / Ação</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -66,27 +70,31 @@
             
             <div class="kpi-cards">
                 <div class="card glass">
-                    <h3>Controladoras Offline</h3>
-                    <div class="value" id="st1-offline">0</div>
-                    <div class="trend" id="st1-trend">Aguardando dados...</div>
+                    <h3>Falta Abrir OS</h3>
+                    <div class="value danger pulse-red" id="st1-falta-abrir">0</div>
+                    <div class="trend">Offline no Omada</div>
                 </div>
-                
                 <div class="card glass">
-                    <h3>Sem Chamado</h3>
-                    <div class="value danger pulse-red" id="st1-no-ticket">0</div>
-                    <div class="trend">Ação Imediata Necessária</div>
+                    <h3>OS Em Andamento</h3>
+                    <div class="value" style="color: #ffaa00;" id="st1-abertos">0</div>
+                    <div class="trend">Sendo Tratadas</div>
+                </div>
+                <div class="card glass">
+                    <h3>Falta Fechar OS</h3>
+                    <div class="value pulse-green" style="color: var(--success);" id="st1-fechar">0</div>
+                    <div class="trend">Recuperadas (Online)</div>
                 </div>
             </div>
 
             <div class="card glass table-card">
-                <h3>Escolas Offline Recentes</h3>
+                <h3>Resumo de Ações Pendentes</h3>
                 <div class="table-wrapper">
                     <table id="st1-table">
                         <thead>
                             <tr>
                                 <th>INEP</th>
                                 <th>Escola</th>
-                                <th>Status RDO</th>
+                                <th>Status / Ação</th>
                             </tr>
                         </thead>
                         <tbody>
