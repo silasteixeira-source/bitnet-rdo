@@ -1,138 +1,310 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOC Command Center</title>
-    <!-- Fontes modernas -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=17">
+    <title>NOC Operations Center</title>
+    <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
-    <!-- Background estático elegante -->
-    <div class="bg-gradient"></div>
 
-    <div class="app-window">
-        
-        <!-- SIDEBAR -->
-        <aside class="sidebar" aria-label="Menu Lateral">
-            <div class="menu-icon active" id="btn-bitnet" onclick="switchTenant('bitnet')" title="BITNET" role="button" aria-label="Selecionar tenant BITNET" tabindex="0">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header justify-between">
+            <div class="brand-logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--brand-active)" stroke-width="2"><polygon points="12 2 2 22 22 22"></polygon></svg>
+                <span class="font-brand">RDO<span style="color:var(--text-primary)">NOC</span></span>
             </div>
-            <div class="menu-icon" id="btn-st1" onclick="switchTenant('st1')" title="ST1" role="button" aria-label="Selecionar tenant ST1" tabindex="0">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-            </div>
-        </aside>
+            <button class="btn-close" id="btn-toggle-sidebar" aria-label="Recolher menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" data-target="view-overview" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                <span>Visão Geral</span>
+            </a>
+            <a class="nav-item" data-target="view-incidents" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                <span>Fila de Incidentes</span>
+            </a>
+            <a class="nav-item" data-target="view-os" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>OS em Andamento</span>
+            </a>
+            <a class="nav-item" data-target="view-recoveries" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <span>Recuperações</span>
+            </a>
+            <a class="nav-item" data-target="view-quality" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Qualidade Cadastral</span>
+            </a>
+            <a class="nav-item" data-target="view-history" tabindex="0" style="margin-top:auto">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span>Histórico (Em Breve)</span>
+            </a>
+        </nav>
+    </aside>
 
-        <div class="main-content">
+    <main class="main-area">
+        <!-- Topbar -->
+        <header class="topbar">
+            <div class="flex items-center gap-4">
+                <button class="btn-icon hidden" id="btn-mobile-menu" aria-label="Abrir menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <h1 class="top-title" id="page-title">Visão Geral</h1>
+                <div class="tenant-selector" role="group" aria-label="Seletor de Tenant">
+                    <button class="tenant-btn" id="btn-tenant-bitnet" aria-pressed="true" onclick="switchTenant('bitnet')">BITNET</button>
+                    <button class="tenant-btn" id="btn-tenant-st1" aria-pressed="false" onclick="switchTenant('st1')">ST1</button>
+                </div>
+            </div>
             
-            <!-- TOPBAR -->
-            <header class="topbar">
-                <div class="logo-area">
-                    <h1 class="logo-text"><span class="highlight">NOC</span> COMMAND CENTER</h1>
-                    <span class="tenant-label" id="current-tenant-label">BITNET</span>
+            <div class="top-controls">
+                <input type="text" class="search-input" placeholder="Buscar INEP, Escola ou Cidade..." aria-label="Busca global">
+                <div class="sync-badge" id="sync-status" title="Status de Sincronização">
+                    <div class="sync-dot"></div>
+                    <span id="sync-text">Atualizado há 1 min</span>
                 </div>
-                
-                <div class="center-title">Monitoramento Global em Tempo Real</div>
-
-                <div class="clock-area">
-                    <div class="time" id="clock">00:00:00</div>
-                    <div class="sync-status" id="sync-status">SYNCHRONIZED</div>
+                <button class="btn btn-icon" id="btn-refresh" title="Atualizar Manualmente" aria-label="Atualizar Dados">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+                <div class="btn-icon" style="background:var(--bg-surface-raised); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-subtle); cursor:pointer;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 </div>
-            </header>
+            </div>
+        </header>
 
-            <!-- MIDDLE SECTION (CARDS) -->
-            <section class="cards-grid">
-                
-                <!-- Card Falta Abrir -->
-                <div class="kpi-card card-danger">
-                    <div class="card-header">FALTA ABRIR OS</div>
-                    <div class="card-body">
-                        <div class="value-box" id="val-falta-abrir">-</div>
-                        <p class="desc">Dispositivos Offline no Omada</p>
+        <div class="view-container">
+            <!-- View: Visão Geral -->
+            <div class="view active" id="view-overview">
+                <div class="kpi-grid">
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-critical);">
+                        <span class="kpi-title">Incidentes Críticos</span>
+                        <span class="kpi-value" id="kpi-critical">-</span>
+                        <span class="kpi-desc">Prontos para abertura (>4h)</span>
                     </div>
-                    <button class="action-btn" onclick="loadTable('falta_abrir')" aria-label="Listar ocorrências que faltam abrir OS">Listar Ocorrências</button>
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-warning);">
+                        <span class="kpi-title">Aguardando Janela</span>
+                        <span class="kpi-value" id="kpi-wait">-</span>
+                        <span class="kpi-desc">Offline abaixo do SLA (<4h)</span>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-info);">
+                        <span class="kpi-title">OS Ativas</span>
+                        <span class="kpi-value" id="kpi-os">-</span>
+                        <span class="kpi-desc">Chamados em tratamento EACE</span>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-success);">
+                        <span class="kpi-title">Recuperações</span>
+                        <span class="kpi-value" id="kpi-recovery">-</span>
+                        <span class="kpi-desc">Voltaram online, aguardando val.</span>
+                    </div>
                 </div>
 
-                <!-- Card Andamento -->
-                <div class="kpi-card card-warning">
-                    <div class="card-header">OS EM ANDAMENTO</div>
-                    <div class="card-body">
-                        <div class="value-box" id="val-abertos">-</div>
-                        <p class="desc">Chamados em Tratamento</p>
-                    </div>
-                    <button class="action-btn" onclick="loadTable('abertos')" aria-label="Gerenciar OS em andamento">Gerenciar OS</button>
-                </div>
-
-                <!-- Card Fechar -->
-                <div class="kpi-card card-success">
-                    <div class="card-header">FALTA FECHAR OS</div>
-                    <div class="card-body">
-                        <div class="value-box" id="val-fechar">-</div>
-                        <p class="desc">Links Recuperados</p>
-                    </div>
-                    <button class="action-btn" onclick="loadTable('fechar')" aria-label="Validar fechamento de OS recuperadas">Validar Fechamento</button>
-                </div>
-
-                <!-- Painel Lateral Decorativo (Status) -->
-                <div class="side-panel">
-                    <div class="panel-box">
-                        <div class="panel-title">
-                            <span class="dot red"></span> LIVE ALERTS
-                        </div>
-                        <ul class="alert-list">
-                            <li>Processando planilhas do Google...</li>
-                            <li>Sincronizando via gspread...</li>
-                            <li>Monitorando via Omada Controller...</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="panel-box mt-10">
-                        <div class="panel-title">STATUS NETWORK</div>
-                        <div class="status-row">
-                            <span>Sincronização API</span>
-                            <span class="text-green">● OK</span>
-                        </div>
-                        <div class="status-row">
-                            <span>Planilha Atualizada</span>
-                            <span class="text-gray" id="sheet-updated">-</span>
-                        </div>
-                        <div class="status-row">
-                            <span>Última Checagem API</span>
-                            <span class="text-gray" id="last-check">Agora</span>
+                <div class="overview-layout">
+                    <!-- Fila Prioritária -->
+                    <div class="panel">
+                        <div class="panel-header">Fila Prioritária</div>
+                        <div class="table-wrapper" style="border:none; border-radius:0;">
+                            <table id="table-overview">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Escola / INEP</th>
+                                        <th>Localidade</th>
+                                        <th>Tempo Offline</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Preenchido via JS -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+
+                    <!-- Lateral -->
+                    <div class="flex-col gap-6">
+                        <!-- Saúde das Fontes -->
+                        <div class="panel">
+                            <div class="panel-header">Saúde das Fontes</div>
+                            <div class="panel-body flex-col gap-3">
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="sync-dot"></div>
+                                        <span class="text-sec">Omada Cloud</span>
+                                    </div>
+                                    <span class="badge badge-success">OK</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="sync-dot"></div>
+                                        <span class="text-sec">EACE / RDO</span>
+                                    </div>
+                                    <span class="badge badge-success">OK</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <div class="sync-dot"></div>
+                                        <span class="text-sec">Google Sheets</span>
+                                    </div>
+                                    <span class="badge badge-success">OK</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Atividade Recente -->
+                        <div class="panel" style="flex-grow:1">
+                            <div class="panel-header">Atividade Recente</div>
+                            <div class="panel-body" id="recent-activity-list">
+                                <!-- Preenchido via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Fila de Incidentes -->
+            <div class="view" id="view-incidents">
+                <div class="filter-bar">
+                    <select class="filter-select" id="filter-uf">
+                        <option value="">UF: Todas</option>
+                    </select>
+                    <select class="filter-select" id="filter-status">
+                        <option value="">Status: Todos</option>
+                        <option value="CRÍTICO">Prontos p/ Abrir (>4h)</option>
+                        <option value="AGUARDAR">Aguardando (<4h)</option>
+                    </select>
+                    <button class="btn" id="btn-clear-filters" style="background:transparent; border:none; color:var(--brand-active)">Limpar Filtros</button>
                 </div>
 
-            </section>
-
-            <!-- BOTTOM SECTION (TABLE) -->
-            <section class="table-section">
-                <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 class="table-title" id="table-title">DETALHES DE OCORRÊNCIAS - CARREGANDO...</h2>
-                    <input type="text" id="search-inep" class="search-input" placeholder="Pesquisar INEP, Cidade ou Escola..." oninput="filterTable()" aria-label="Pesquisar por INEP, Cidade ou Escola">
+                <div class="tabs">
+                    <div class="tab active" data-tab="todos">Todos (<span id="count-todos">0</span>)</div>
+                    <div class="tab" data-tab="critico">Críticos (<span id="count-critico">0</span>)</div>
+                    <div class="tab" data-tab="aguardar">Aguardando (<span id="count-aguardar">0</span>)</div>
                 </div>
-                <div class="table-container">
-                    <table id="data-table">
+
+                <div class="table-wrapper">
+                    <table id="table-incidents">
                         <thead>
                             <tr>
+                                <th>Prioridade</th>
+                                <th>Escola</th>
+                                <th>Localidade</th>
                                 <th>INEP</th>
-                                <th>CIDADE</th>
-                                <th>ESCOLA</th>
-                                <th>STATUS</th>
-                                <th>AÇÃO</th>
+                                <th>Tempo Offline</th>
+                                <th>Qualidade</th>
+                                <th>Ação</th>
                             </tr>
                         </thead>
-                        <tbody id="table-body">
-                            <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Conectando com o Google Sheets...</td></tr>
+                        <tbody>
+                            <!-- Preenchido via JS -->
                         </tbody>
                     </table>
                 </div>
-            </section>
+            </div>
+            
+            <!-- Outras Views (Placeholder) -->
+            <div class="view" id="view-os">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <h2>OS em Andamento</h2>
+                    <p>Nenhuma OS vinculada via RDO atualmente.</p>
+                </div>
+            </div>
+            
+            <div class="view" id="view-recoveries">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <h2>Recuperações Pendentes</h2>
+                    <p>Nenhum link crítico voltou a ficar online neste ciclo.</p>
+                </div>
+            </div>
+            
+            <div class="view" id="view-quality">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <h2>Qualidade Cadastral</h2>
+                    <p>Todas as escolas estão associadas corretamente a um INEP EACE.</p>
+                </div>
+            </div>
+            
+            <div class="view" id="view-history">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    <h2>Histórico de Operações</h2>
+                    <p>Esta funcionalidade será ativada na próxima fase de desenvolvimento.</p>
+                </div>
+            </div>
+
         </div>
+    </main>
+
+    <!-- Drawer Lateral -->
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+    <aside class="drawer" id="drawer-details">
+        <div class="drawer-header">
+            <h2 class="drawer-title">Detalhes da Ocorrência</h2>
+            <button class="btn-close" id="btn-close-drawer"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="drawer-body">
+            <div class="flex items-center gap-3" style="margin-bottom:var(--sp-6)">
+                <div id="drawer-badge" class="badge badge-critical">🚨 CRÍTICO</div>
+                <div class="text-sec" style="font-size:12px" id="drawer-time">Offline há 4h20m</div>
+            </div>
+            
+            <h3 style="font-size:16px; margin-bottom:4px" id="drawer-school">Nome da Escola</h3>
+            <p class="text-ter" style="font-size:13px; margin-bottom:var(--sp-6)" id="drawer-location">Localidade / UF</p>
+            
+            <div class="info-grid">
+                <div class="info-group">
+                    <div class="info-label">INEP</div>
+                    <div class="info-val" id="drawer-inep">-</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">IP (Omada)</div>
+                    <div class="info-val" id="drawer-ip">-</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Regra Aplicada</div>
+                    <div class="info-val" id="drawer-rule">-</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Qualidade Cadastral</div>
+                    <div class="info-val" id="drawer-cad">-</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2" style="margin-top:var(--sp-4); margin-bottom:var(--sp-6)">
+                <button class="btn btn-primary w-full justify-center">Preparar Abertura</button>
+                <button class="btn w-full justify-center">Copiar Resumo</button>
+            </div>
+            
+            <h4 class="text-sec" style="text-transform:uppercase; font-size:12px; margin-top:var(--sp-8); margin-bottom:var(--sp-4)">Timeline</h4>
+            <div class="timeline" id="drawer-timeline">
+                <div class="timeline-item">
+                    <div class="timeline-dot active"></div>
+                    <div class="timeline-time">Agora</div>
+                    <div class="timeline-content">Aguardando ação do operador</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-time">Há 4h</div>
+                    <div class="timeline-content">SLA Crítico atingido (4 horas offline)</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-time">Há 4h20m</div>
+                    <div class="timeline-content">Queda detectada via Omada Controller</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";
     </script>
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
 </body>
 </html>
