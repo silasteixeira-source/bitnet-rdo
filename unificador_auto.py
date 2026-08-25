@@ -324,18 +324,28 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
 
     # Merge com df_os para capturar Regra, Tempo Offline, Status e Número do Ticket
     def merge_os_data(df, df_os_abertos):
+        cols_desejadas = ['INEP', 'Status', 'Prioridade', 'Data da Resolução', 'Ticket#']
+        col_dias = next((c for c in df_os_abertos.columns if 'dias em aberto' in str(c).lower()), None)
+        if col_dias:
+            cols_desejadas.append(col_dias)
+            
+        cols_existentes = [c for c in cols_desejadas if c in df_os_abertos.columns]
+        
         df_merged = pd.merge(
             df, 
-            df_os_abertos[['INEP', 'Status', 'Prioridade', 'Data da Resolução', 'Nmero de dias em aberto', 'Ticket#']], 
+            df_os_abertos[cols_existentes], 
             left_on='INEP_Extraido', 
             right_on='INEP', 
             how='left'
         )
         if 'Ticket#' in df_merged.columns:
             df_merged.rename(columns={'Ticket#': 'Ticket'}, inplace=True)
-        # Converter para float de forma segura
-        df_merged['Dias em Aberto'] = pd.to_numeric(df_merged['Nmero de dias em aberto'], errors='coerce').fillna(0).apply(lambda x: f"{x:.1f}")
-        df_merged.drop(columns=['INEP', 'Nmero de dias em aberto'], inplace=True, errors='ignore')
+            
+        if col_dias and col_dias in df_merged.columns:
+            df_merged['Dias em Aberto'] = pd.to_numeric(df_merged[col_dias], errors='coerce').fillna(0).apply(lambda x: f"{x:.1f}")
+            df_merged.drop(columns=[col_dias], inplace=True, errors='ignore')
+            
+        df_merged.drop(columns=['INEP'], inplace=True, errors='ignore')
         return df_merged
 
     df_ja_aberto = merge_os_data(df_ja_aberto, df_os_abertos)
