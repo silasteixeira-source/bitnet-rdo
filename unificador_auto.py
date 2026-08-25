@@ -382,19 +382,19 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         if 'INEP_Extraido' in df_alvo.columns:
             def get_nome(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                nome_eace = escolas_eace_map.get(inep, {}).get('nome', '')
+                nome_eace = os_map.get(inep, {}).get('Escola', '')
                 return nome_eace if nome_eace else "Não Cadastrado na EACE"
                 
             def get_uf(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                uf = escolas_eace_map.get(inep, {}).get('uf', '')
+                uf = os_map.get(inep, {}).get('UF', '')
                 if not uf or uf == '-':
                     uf, _ = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                 return uf
                 
             def get_mun(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                mun = escolas_eace_map.get(inep, {}).get('municipio', '')
+                mun = os_map.get(inep, {}).get('Municipio', '')
                 if not mun or mun == '-':
                     _, mun = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                 return mun
