@@ -62,9 +62,9 @@ async function fetchDashboardData() {
             throw new Error(data.error);
         }
 
-        // Se veio vazio (Google Rate Limit), aborta sem zerar o cache local
-        if (!data.bitnet || Object.keys(data.bitnet).length === 0) {
-            throw new Error("Planilha retornou vazia (rate limit)");
+        // Se veio vazio, aborta sem zerar o cache local
+        if (!data.falta_abrir && !data.abertos && !data.fechar) {
+            throw new Error("Planilha retornou vazia ou formato inválido");
         }
 
         // Com o novo backend em JSON, os dados já vêm encapsulados para o tenant atual.
