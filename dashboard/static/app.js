@@ -7,6 +7,7 @@ const state = {
     filterUf: '',
     filterStatus: '',
     searchQuery: '',
+    currentFilteredList: [],
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
     currentView: 'view-overview'
 };
@@ -50,6 +51,7 @@ const els = {
     filterUf: document.getElementById('filter-uf'),
     filterStatus: document.getElementById('filter-status'),
     btnClearFilters: document.getElementById('btn-clear-filters'),
+    btnExportExcel: document.getElementById('btn-export-excel'),
     searchInput: document.querySelector('.search-input'),
     tabs: document.querySelectorAll('.tab'),
     countTodos: document.getElementById('count-todos'),
@@ -130,11 +132,60 @@ function setupEventListeners() {
         state.searchQuery = '';
         renderIncidents();
     });
+    
+    // Search
     els.searchInput.addEventListener('input', (e) => {
-        state.searchQuery = e.target.value.toLowerCase();
+        state.searchQuery = e.target.value.trim().toLowerCase();
         renderOverview();
         renderIncidents();
     });
+
+    // Export Excel
+    if (els.btnExportExcel) {
+        els.btnExportExcel.addEventListener('click', () => {
+            if(!state.currentFilteredList || state.currentFilteredList.length === 0) {
+                alert("Não há dados para exportar com os filtros atuais.");
+                return;
+            }
+            
+            // Transform data for excel
+            const dataToExport = state.currentFilteredList.map(item => {
+                const nameField = item['NAME'] || item['Nome'] || '';
+                let localidade = '-';
+                if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+                    localidade = `${item['Municipio']} / ${item['UF']}`;
+                } else if (nameField.includes('-')) {
+                    localidade = nameField.split('-')[0].trim();
+                } else {
+                    localidade = nameField || '-';
+                }
+
+                return {
+                    "INEP": item['INEP_Extraido'] || item['INEP'] || '',
+                    "Escola": item['Nome da Escola'] || item['Escola'] || '',
+                    "Localidade": localidade,
+                    "Parceiro (Provedor)": item['Parceiro'] || '',
+                    "Status / Regra": item["Regra de Abertura (4h Offline)"] || '',
+                    "IP Address": item['IP Address'] || '',
+                    "MAC Address": item['MAC Address'] || '',
+                    "Uptime": item['Uptime'] || '',
+                    "Última Vez Visto": item['Last Seen'] || ''
+                };
+            });
+            
+            try {
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Fila de Incidentes");
+                
+                const ufStr = state.filterUf ? state.filterUf : "Todas";
+                XLSX.writeFile(wb, `Fila_Incidentes_NOC_${ufStr}_${new Date().getTime()}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao gerar Excel:", err);
+                alert("Falha ao gerar o arquivo Excel. Verifique o console.");
+            }
+        });
+    }
 
     // Tabs
     els.tabs.forEach(tab => {
@@ -569,6 +620,9 @@ function renderIncidents() {
         if(state.activeTab === 'aguardar' && !rule.includes('⏳')) return false;
         return true;
     });
+    
+    // Save to state for Export Excel
+    state.currentFilteredList = filtered;
     
     if(filtered.length === 0) {
         const tr = document.createElement('tr');
