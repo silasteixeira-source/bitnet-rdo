@@ -265,6 +265,16 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
 
     log("3/4 - Cruzando com Controle de OS (EACE)...")
     df_os = pd.read_excel(os_path)
+    
+    os_map = {}
+    for _, row in df_os.iterrows():
+        inep = str(row.get('INEP', '')).strip().replace('.0', '')
+        if inep and inep != 'nan':
+            uf = row.get('UF', row.get('Estado', '-'))
+            mun = row.get('Municipio', row.get('Cidade', '-'))
+            escola = row.get('Escola', row.get('Nome', row.get('Cliente', '-')))
+            os_map[inep] = {'Escola': escola, 'UF': uf, 'Municipio': mun}
+            
     df_os_abertos = df_os[~df_os['Status'].astype(str).str.upper().str.contains('CONCLUÍDO|CONCLUIDO|CANCELADO|FECHADO', regex=True, na=False)].copy()
     
     if 'INEP' in df_os_abertos.columns:
