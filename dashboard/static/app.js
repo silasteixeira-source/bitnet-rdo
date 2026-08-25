@@ -266,8 +266,8 @@ function populateUfFilter() {
     const list = state.lastValidData.falta_abrir || [];
     const ufs = new Set();
     list.forEach(item => {
-        const c = item["Localidade"] || "";
-        const parts = c.split("-");
+        const nameField = item['NAME'] || item['Nome'] || '';
+        const parts = nameField.split("-");
         if(parts.length > 1) {
             ufs.add(parts[parts.length-1].trim());
         }
@@ -324,7 +324,10 @@ function renderOverview() {
     // Filter by search
     if(state.searchQuery) {
         sorted = sorted.filter(item => {
-            const str = (item.Escola + item.INEP + item.Localidade).toLowerCase();
+            const inep = item['INEP_Extraido'] || item['INEP'] || '';
+            const name = item['Nome da Escola'] || item['Escola'] || '';
+            const nameField = item['NAME'] || item['Nome'] || '';
+            const str = (name + inep + nameField).toLowerCase();
             return str.includes(state.searchQuery);
         });
     }
@@ -345,10 +348,15 @@ function renderOverview() {
     }
 
     sliced.forEach(item => {
-        const tr = document.createElement('tr');
+        const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+        const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+        const nameField = item['NAME'] || item['Nome'] || '';
+        const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || '-');
         const rule = item["Regra de Abertura (4h Offline)"] || "";
         const isCritical = rule.includes('🚨');
+        const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
         
+        const tr = document.createElement('tr');
         tr.className = `priority-row ${isCritical ? 'critical' : ''}`;
         
         // Status Badge
@@ -366,10 +374,10 @@ function renderOverview() {
         // Escola
         const tdEscola = document.createElement('td');
         const divE = document.createElement('div');
-        divE.textContent = item.Escola || "Desconhecida";
+        divE.textContent = name;
         divE.style.fontWeight = '500';
         const divI = document.createElement('div');
-        divI.textContent = item.INEP || "-";
+        divI.textContent = inep;
         divI.className = 'text-ter';
         divI.style.fontSize = '11px';
         tdEscola.appendChild(divE);
@@ -377,12 +385,12 @@ function renderOverview() {
         
         // Localidade
         const tdLoc = document.createElement('td');
-        tdLoc.textContent = item.Localidade || "-";
+        tdLoc.textContent = localidade;
         
         // Tempo Offline
         const tdTime = document.createElement('td');
         const divT = document.createElement('div');
-        divT.textContent = item["Offline Since"] || "-";
+        divT.textContent = timeOffline;
         const divU = document.createElement('div');
         divU.textContent = item["Uptime"] || "-";
         divU.className = 'text-ter';
@@ -446,6 +454,9 @@ function renderIncidents() {
     
     let filtered = list.filter(item => {
         const rule = item["Regra de Abertura (4h Offline)"] || "";
+        const inep = item['INEP_Extraido'] || item['INEP'] || '';
+        const name = item['Nome da Escola'] || item['Escola'] || '';
+        const nameField = item['NAME'] || item['Nome'] || '';
         
         // Tab Filter
         if(state.activeTab === 'critico' && !rule.includes('🚨')) return false;
@@ -453,8 +464,7 @@ function renderIncidents() {
         
         // Dropdown UF
         if(state.filterUf) {
-            const loc = item["Localidade"] || "";
-            if(!loc.endsWith(state.filterUf)) return false;
+            if(!nameField.endsWith(state.filterUf)) return false;
         }
         
         // Dropdown Status
@@ -463,7 +473,7 @@ function renderIncidents() {
         
         // Search
         if(state.searchQuery) {
-            const str = (item.Escola + item.INEP + item.Localidade).toLowerCase();
+            const str = (name + inep + nameField).toLowerCase();
             if(!str.includes(state.searchQuery)) return false;
         }
         
@@ -487,9 +497,15 @@ function renderIncidents() {
     }
 
     filtered.forEach(item => {
-        const tr = document.createElement('tr');
+        const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+        const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+        const nameField = item['NAME'] || item['Nome'] || '';
+        const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || '-');
         const rule = item["Regra de Abertura (4h Offline)"] || "";
         const isCritical = rule.includes('🚨');
+        const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
+        
+        const tr = document.createElement('tr');
         
         // Status Badge
         const tdStatus = document.createElement('td');
@@ -505,24 +521,24 @@ function renderIncidents() {
         
         // Escola
         const tdEscola = document.createElement('td');
-        tdEscola.textContent = item.Escola || "Desconhecida";
+        tdEscola.textContent = name;
         
         // Localidade
         const tdLoc = document.createElement('td');
-        tdLoc.textContent = item.Localidade || "-";
+        tdLoc.textContent = localidade;
         
         // INEP
         const tdInep = document.createElement('td');
-        tdInep.textContent = item.INEP || "-";
+        tdInep.textContent = inep;
         
         // Tempo Offline
         const tdTime = document.createElement('td');
-        tdTime.textContent = item["Offline Since"] || "-";
+        tdTime.textContent = timeOffline;
         
         // Qualidade
         const tdQual = document.createElement('td');
         const qual = document.createElement('span');
-        if(item.Escola === 'N/A' || !item.Escola) {
+        if(name === 'N/A' || !item['Nome da Escola']) {
             qual.className = 'badge badge-warning';
             qual.textContent = 'Sem Cadastro';
         } else {
@@ -555,15 +571,22 @@ function renderIncidents() {
 
 // Drawer Interactions
 function openDrawer(item) {
+    const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+    const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+    const nameField = item['NAME'] || item['Nome'] || '';
+    const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || 'Localização Indisponível');
+    const rule = item["Regra de Abertura (4h Offline)"] || "";
+    const ip = item['IP Address'] || item['IP'] || 'Não reportado';
+    const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
+
     els.drawerOverlay.classList.add('active');
     els.drawer.classList.add('open');
     
-    els.drawerSchool.textContent = item.Escola || "Escola Desconhecida";
-    els.drawerLocation.textContent = item.Localidade || "Localização Indisponível";
-    els.drawerInep.textContent = item.INEP || "Sem INEP";
-    els.drawerIp.textContent = item.IP || "Não reportado";
+    els.drawerSchool.textContent = name;
+    els.drawerLocation.textContent = localidade;
+    els.drawerInep.textContent = inep;
+    els.drawerIp.textContent = ip;
     
-    const rule = item["Regra de Abertura (4h Offline)"] || "";
     els.drawerRule.textContent = rule;
     
     if(rule.includes('🚨')) {
@@ -574,9 +597,9 @@ function openDrawer(item) {
         els.drawerBadge.textContent = '⏳ AGUARDAR SLA';
     }
     
-    els.drawerTime.textContent = item["Uptime"] || "-";
+    els.drawerTime.textContent = 'Offline há ' + timeOffline;
     
-    if(item.Escola === 'N/A') {
+    if(!item['Nome da Escola'] || item['Nome da Escola'] === 'N/A') {
         els.drawerCad.innerHTML = '<span class="badge badge-warning">Divergência EACE</span>';
     } else {
         els.drawerCad.innerHTML = '<span class="badge badge-success">Sincronizado</span>';
