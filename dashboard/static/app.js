@@ -498,10 +498,13 @@ function renderOverview() {
     // Filter by search
     if(state.searchQuery) {
         sorted = sorted.filter(item => {
-            const inep = item['INEP_Extraido'] || item['INEP'] || '';
-            const name = item['Nome da Escola'] || item['Escola'] || '';
-            const nameField = item['NAME'] || item['Nome'] || '';
-            const str = (name + inep + nameField).toLowerCase();
+            const inepStr = String(item['INEP_Extraido'] || item['INEP'] || '');
+            const nameStr = String(item['Nome da Escola'] || item['Escola'] || '');
+            const omadaStr = String(item['NAME'] || item['Nome'] || '');
+            const ufStr = String(item['UF'] || '');
+            const munStr = String(item['Municipio'] || '');
+            
+            const str = `${nameStr} ${inepStr} ${omadaStr} ${ufStr} ${munStr}`.toLowerCase();
             return str.includes(state.searchQuery);
         });
     }
@@ -651,7 +654,13 @@ function renderIncidents() {
         
         // Search
         if(state.searchQuery) {
-            const str = (name + inep + nameField).toLowerCase();
+            const inepStr = String(item['INEP_Extraido'] || item['INEP'] || '');
+            const nameStr = String(item['Nome da Escola'] || item['Escola'] || '');
+            const omadaStr = String(item['NAME'] || item['Nome'] || '');
+            const ufStr = String(item['UF'] || '');
+            const munStr = String(item['Municipio'] || '');
+            
+            const str = `${nameStr} ${inepStr} ${omadaStr} ${ufStr} ${munStr}`.toLowerCase();
             if(!str.includes(state.searchQuery)) return false;
         }
         
