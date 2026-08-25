@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOC Operations Center</title>
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 
@@ -205,20 +205,42 @@
                 </div>
             </div>
             
-            <!-- Outras Views (Placeholder) -->
+            <!-- Outras Views -->
             <div class="view" id="view-os">
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    <h2>OS em Andamento</h2>
-                    <p>Nenhuma OS vinculada via RDO atualmente.</p>
+                <div class="table-wrapper">
+                    <table id="table-os">
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Status</th>
+                                <th>Escola</th>
+                                <th>INEP</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
             <div class="view" id="view-recoveries">
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <h2>Recuperações Pendentes</h2>
-                    <p>Nenhum link crítico voltou a ficar online neste ciclo.</p>
+                <div class="table-wrapper">
+                    <table id="table-recoveries">
+                        <thead>
+                            <tr>
+                                <th>Ticket</th>
+                                <th>Status</th>
+                                <th>Escola</th>
+                                <th>INEP</th>
+                                <th>Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
             
@@ -305,6 +327,6 @@
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";
     </script>
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=23"></script>
 </body>
 </html>

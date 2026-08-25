@@ -46,6 +46,10 @@ const els = {
     countCritico: document.getElementById('count-critico'),
     countAguardar: document.getElementById('count-aguardar'),
     
+    // Novas Views
+    tableOs: document.querySelector('#table-os tbody'),
+    tableRecoveries: document.querySelector('#table-recoveries tbody'),
+    
     // Drawer
     drawerOverlay: document.getElementById('drawer-overlay'),
     drawer: document.getElementById('drawer-details'),
@@ -153,6 +157,10 @@ function switchView(viewId) {
         renderIncidents();
     } else if(viewId === 'view-overview') {
         renderOverview();
+    } else if(viewId === 'view-os') {
+        renderOs();
+    } else if(viewId === 'view-recoveries') {
+        renderRecoveries();
     }
 }
 
@@ -259,6 +267,10 @@ function updateUI() {
         renderOverview();
     } else if(state.currentView === 'view-incidents') {
         renderIncidents();
+    } else if(state.currentView === 'view-os') {
+        renderOs();
+    } else if(state.currentView === 'view-recoveries') {
+        renderRecoveries();
     }
 }
 
@@ -300,9 +312,12 @@ function updateKPIs() {
     els.kpiCritical.textContent = criticalCount;
     els.kpiWait.textContent = waitCount;
     
-    // Mock values for OS/Recovery since they are coming in next phases
-    els.kpiOs.textContent = "12";
-    els.kpiRecovery.textContent = "3";
+    // Values from JSON snapshot
+    const osAbertasCount = (state.lastValidData.abertos || []).length;
+    const recupCount = (state.lastValidData.fechar || []).length;
+    
+    els.kpiOs.textContent = osAbertasCount;
+    els.kpiRecovery.textContent = recupCount;
     
     els.countTodos.textContent = list.length;
     els.countCritico.textContent = criticalCount;
@@ -566,6 +581,110 @@ function renderIncidents() {
         tr.appendChild(tdAct);
         
         els.tableIncidents.appendChild(tr);
+    });
+}
+
+// Render OS em Andamento
+function renderOs() {
+    if(!els.tableOs) return;
+    els.tableOs.innerHTML = '';
+    const list = state.lastValidData.abertos || [];
+    
+    if(list.length === 0) {
+        els.tableOs.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3>Nenhuma OS em Andamento</h3></div></td></tr>`;
+        return;
+    }
+    
+    list.forEach(item => {
+        const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+        const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+        const ticket = item['Ticket#'] || 'S/N';
+        const status = item['Status'] || 'Em Análise';
+        
+        const tr = document.createElement('tr');
+        
+        const tdTicket = document.createElement('td');
+        const badgeTicket = document.createElement('span');
+        badgeTicket.className = 'badge badge-info';
+        badgeTicket.textContent = ticket;
+        tdTicket.appendChild(badgeTicket);
+        
+        const tdStatus = document.createElement('td');
+        tdStatus.textContent = status;
+        
+        const tdEscola = document.createElement('td');
+        tdEscola.textContent = name;
+        
+        const tdInep = document.createElement('td');
+        tdInep.textContent = inep;
+        
+        const tdAcao = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = 'Copiar Resumo';
+        btn.onclick = () => navigator.clipboard.writeText(`Ticket: ${ticket} - INEP: ${inep}`);
+        tdAcao.appendChild(btn);
+        
+        tr.appendChild(tdTicket);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdEscola);
+        tr.appendChild(tdInep);
+        tr.appendChild(tdAcao);
+        
+        els.tableOs.appendChild(tr);
+    });
+}
+
+// Render Recuperações
+function renderRecoveries() {
+    if(!els.tableRecoveries) return;
+    els.tableRecoveries.innerHTML = '';
+    const list = state.lastValidData.fechar || [];
+    
+    if(list.length === 0) {
+        els.tableRecoveries.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3>Nenhuma Recuperação Pendente</h3></div></td></tr>`;
+        return;
+    }
+    
+    list.forEach(item => {
+        const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+        const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+        const ticket = item['Ticket#'] || 'S/N';
+        
+        const tr = document.createElement('tr');
+        
+        const tdTicket = document.createElement('td');
+        const badgeTicket = document.createElement('span');
+        badgeTicket.className = 'badge badge-warning';
+        badgeTicket.textContent = ticket;
+        tdTicket.appendChild(badgeTicket);
+        
+        const tdStatus = document.createElement('td');
+        const badgeStatus = document.createElement('span');
+        badgeStatus.className = 'badge badge-success';
+        badgeStatus.textContent = 'ONLINE';
+        tdStatus.appendChild(badgeStatus);
+        
+        const tdEscola = document.createElement('td');
+        tdEscola.textContent = name;
+        
+        const tdInep = document.createElement('td');
+        tdInep.textContent = inep;
+        
+        const tdAcao = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.textContent = 'Copiar Dados P/ Fechar';
+        btn.onclick = () => navigator.clipboard.writeText(`Fechamento INEP: ${inep} - Ticket: ${ticket} - ONLINE`);
+        tdAcao.appendChild(btn);
+        
+        tr.appendChild(tdTicket);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdEscola);
+        tr.appendChild(tdInep);
+        tr.appendChild(tdAcao);
+        
+        els.tableRecoveries.appendChild(tr);
     });
 }
 
