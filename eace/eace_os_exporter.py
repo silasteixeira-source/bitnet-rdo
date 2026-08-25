@@ -306,6 +306,7 @@ class EACEOSExporter:
                     "--rdo", self.rdo_url,
                     "--url", self.dest_url,
                     "--omada-url", self.omada_url,
+                    "--tenant", self.label.lower(),
                     "--intervalo", "0"
                 ]
                 subprocess.run(cmd, check=False)

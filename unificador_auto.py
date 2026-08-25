@@ -200,8 +200,8 @@ def sort_by_uptime(df, status_col):
     df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
     return df
 
-def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_google=True, gsheet_url=DEFAULT_BITNET_URL, omada_gsheet_url=DEFAULT_OMADA_GSHEET_URL):
-    """Executa o cruzamento completo de dados e publica nas abas do Google Sheets."""
+def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_google=True, gsheet_url=DEFAULT_BITNET_URL, omada_gsheet_url=DEFAULT_OMADA_GSHEET_URL, tenant="bitnet"):
+    """Executa o cruzamento completo de dados e publica nas abas do Google Sheets e salva JSON."""
     log("=== Iniciando Processamento do Unificador de Chamados ===")
     
     # Se a planilha do Omada Anterior ainda não existir (primeiro ciclo), usa a Atual como fallback
@@ -368,6 +368,29 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
 
     log(f"Resultados calculados -> Falta Abrir: {len(df_falta_abrir)} | Já Possui: {len(df_ja_aberto)} | Fechar: {len(df_fechar_chamado)} | Ignorados: {len(df_ignorados)}")
 
+    # NOVO: Salvar JSON Snapshot
+    snapshot_dir = "/app/.streamlit/snapshots"
+    if not os.path.exists("/app/.streamlit"):
+        snapshot_dir = "../.streamlit/snapshots" if os.path.exists("../.streamlit") else ".streamlit/snapshots"
+    
+    os.makedirs(snapshot_dir, exist_ok=True)
+    snapshot_path = os.path.join(snapshot_dir, f"{tenant}.json")
+    
+    snapshot_data = {
+        "falta_abrir": df_falta_abrir.to_dict(orient='records'),
+        "abertos": df_ja_aberto.to_dict(orient='records'),
+        "fechar": df_fechar_chamado.to_dict(orient='records'),
+        "updated_at": hora_execucao_br
+    }
+    
+    import json
+    try:
+        with open(snapshot_path, "w", encoding="utf-8") as f:
+            json.dump(snapshot_data, f, ensure_ascii=False, indent=2)
+        log(f"✅ Snapshot JSON salvo para o tenant {tenant} em: {snapshot_path}")
+    except Exception as e:
+        log(f"❌ Erro ao salvar snapshot JSON: {e}")
+
     if sync_google and client:
         log(f"Sincronizando com o Google Sheets: {gsheet_url}")
         try:
@@ -395,6 +418,7 @@ def main():
     parser.add_argument("--rdo", type=str, default="https://docs.google.com/spreadsheets/d/1eHZwGEo4-wQ4kvZvNU2mRFx-D3elurKk/edit?gid=1631182129#gid=1631182129", help="URL do Google Sheets do RDO ou caminho para arquivo Excel local")
     parser.add_argument("--url", type=str, default=DEFAULT_BITNET_URL, help="URL da planilha Google de destino")
     parser.add_argument("--omada-url", type=str, default=DEFAULT_OMADA_GSHEET_URL, help="URL da planilha Google do Omada")
+    parser.add_argument("--tenant", type=str, default="bitnet", help="Nome do tenant (ex: bitnet, st1)")
     parser.add_argument("--no-sync", action="store_true", help="Não sincronizar com Google Sheets")
     parser.add_argument("--intervalo", type=int, default=0, help="Intervalo em segundos para repetição contínua (0 = apenas uma vez)")
     args = parser.parse_args()
@@ -450,7 +474,8 @@ def main():
                             rdo_path=rdo_path,
                             sync_google=(not args.no_sync),
                             gsheet_url=args.url,
-                            omada_gsheet_url=args.omada_url
+                            omada_gsheet_url=args.omada_url,
+                            tenant=args.tenant
                         )
                         if sucesso:
                             last_mtime_omada = os.path.getmtime(args.new)
@@ -475,7 +500,8 @@ def main():
             rdo_path=rdo_path,
             sync_google=(not args.no_sync),
             gsheet_url=args.url,
-            omada_gsheet_url=args.omada_url
+            omada_gsheet_url=args.omada_url,
+            tenant=args.tenant
         )
 
 if __name__ == "__main__":

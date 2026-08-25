@@ -45,7 +45,11 @@ async function fetchDashboardData() {
         statusEl.innerText = 'SYNCING...';
         statusEl.style.color = 'var(--warning)';
 
-        const response = await fetch(`/api/data?t=${new Date().getTime()}`);
+        const response = await fetch(`/api/v1/dashboard?tenant=${currentTenant}&t=${new Date().getTime()}`, {
+            headers: {
+                'X-API-Key': window.NOC_API_KEY
+            }
+        });
         const data = await response.json();
 
         if (data.error) {
@@ -57,25 +61,20 @@ async function fetchDashboardData() {
             throw new Error("Planilha retornou vazia (rate limit)");
         }
 
-        // --- BLINDAGEM CONTRA PLANILHAS ZERADAS ---
-        // Se as três abas de um tenant vierem zeradas, assumimos que o robô do cliente
-        // está no meio de uma atualização (wiping). Então mantemos os dados antigos!
+        // Com o novo backend em JSON, os dados já vêm encapsulados para o tenant atual.
         let usingStaleData = false;
-        if (dashboardData) {
-            const isBitnetEmpty = data.bitnet.falta_abrir.length === 0 && data.bitnet.abertos.length === 0 && data.bitnet.fechar.length === 0;
-            if (isBitnetEmpty) {
-                data.bitnet = dashboardData.bitnet;
-                usingStaleData = true;
-            }
-            
-            const isSt1Empty = data.st1.falta_abrir.length === 0 && data.st1.abertos.length === 0 && data.st1.fechar.length === 0;
-            if (isSt1Empty) {
-                data.st1 = dashboardData.st1;
+        if (dashboardData && dashboardData[currentTenant]) {
+            const isTenantEmpty = (data.falta_abrir || []).length === 0 && (data.abertos || []).length === 0 && (data.fechar || []).length === 0;
+            if (isTenantEmpty) {
+                data = dashboardData[currentTenant];
                 usingStaleData = true;
             }
         }
 
-        dashboardData = data;
+        // Como o backend agora retorna os dados na raiz, empacotamos no dashboardData
+        if (!dashboardData) dashboardData = {};
+        dashboardData[currentTenant] = data;
+        
         updateCards();
         loadTable(currentView);
         updateSheetTime();
@@ -106,14 +105,18 @@ async function fetchDashboardData() {
 function updateSheetTime() {
     let sheetTime = '-';
     
-    // Procura o campo 'Atualizado Em' na primeira linha que encontrar
-    const views = ['falta_abrir', 'abertos', 'fechar'];
-    for (let view of views) {
-        const records = dashboardData[currentTenant][view];
-        if (records && records.length > 0) {
-            if (records[0]['Atualizado Em']) {
-                sheetTime = records[0]['Atualizado Em'];
-                break;
+    // O novo JSON pode vir com a data no root
+    if (dashboardData[currentTenant] && dashboardData[currentTenant].updated_at) {
+        sheetTime = dashboardData[currentTenant].updated_at;
+    } else {
+        const views = ['falta_abrir', 'abertos', 'fechar'];
+        for (let view of views) {
+            const records = dashboardData[currentTenant][view];
+            if (records && records.length > 0) {
+                if (records[0]['Atualizado Em']) {
+                    sheetTime = records[0]['Atualizado Em'];
+                    break;
+                }
             }
         }
     }
