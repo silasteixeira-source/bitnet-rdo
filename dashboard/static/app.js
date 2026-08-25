@@ -50,7 +50,13 @@ async function fetchDashboardData() {
                 'X-API-Key': window.NOC_API_KEY
             }
         });
-        const data = await response.json();
+        
+        if (!response.ok) {
+            const txt = await response.text();
+            throw new Error(`HTTP ${response.status}: ${txt}`);
+        }
+        
+        let data = await response.json();
 
         if (data.error) {
             throw new Error(data.error);
@@ -92,13 +98,15 @@ async function fetchDashboardData() {
             const now = new Date();
             lastCheckEl.innerText = now.toLocaleTimeString();
         }
-    } catch (error) {
-        console.error("Erro no Sync:", error);
-        statusEl.innerText = 'RETRYING...';
-        statusEl.style.color = 'var(--warning)';
-        // Importante: NÃO zeramos a variável dashboardData.
-        // Assim o painel continua mostrando os dados antigos enquanto tenta reconectar!
-    }
+    } catch (err) {
+        console.error("Erro na API:", err);
+        statusEl.innerText = 'ERRO API';
+        statusEl.style.color = 'var(--error)';
+        
+        const tbody = document.querySelector('#occurrences-table tbody');
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--error); padding: 2rem;">ERRO DE COMUNICAÇÃO: ${err.message}</td></tr>`;
+    }// Importante: NÃO zeramos a variável dashboardData.
+    // Assim o painel continua mostrando os dados antigos enquanto tenta reconectar!
 }
 
 // Atualizar horário da planilha
