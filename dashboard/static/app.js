@@ -72,6 +72,7 @@ const els = {
     drawerInep: document.getElementById('drawer-inep'),
     drawerIp: document.getElementById('drawer-ip'),
     drawerRule: document.getElementById('drawer-rule'),
+    drawerPartner: document.getElementById('drawer-partner'),
     drawerCad: document.getElementById('drawer-cad'),
     drawerTimeline: document.getElementById('drawer-timeline')
 };
@@ -312,10 +313,8 @@ function populateUfFilter() {
     const list = state.lastValidData.falta_abrir || [];
     const ufs = new Set();
     list.forEach(item => {
-        const nameField = item['NAME'] || item['Nome'] || '';
-        const parts = nameField.split("-");
-        if(parts.length > 1) {
-            ufs.add(parts[parts.length-1].trim());
+        if(item['UF'] && item['UF'] !== "-") {
+            ufs.add(item['UF'].trim());
         }
     });
     
@@ -420,7 +419,16 @@ function renderOverview() {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
         const nameField = item['NAME'] || item['Nome'] || '';
-        const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || '-');
+        
+        let localidade = '-';
+        if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Município']} / ${item['UF']}`;
+        } else if (nameField.includes('-')) {
+            localidade = nameField.split('-')[0].trim();
+        } else {
+            localidade = nameField || '-';
+        }
+        
         const rule = item["Regra de Abertura (4h Offline)"] || "";
         const isCritical = rule.includes('🚨');
         const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
@@ -533,7 +541,7 @@ function renderIncidents() {
         
         // Dropdown UF
         if(state.filterUf) {
-            if(!nameField.endsWith(state.filterUf)) return false;
+            if(item['UF'] !== state.filterUf) return false;
         }
         
         // Dropdown Status
@@ -569,7 +577,16 @@ function renderIncidents() {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
         const nameField = item['NAME'] || item['Nome'] || '';
-        const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || '-');
+        
+        let localidade = '-';
+        if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Município']} / ${item['UF']}`;
+        } else if (nameField.includes('-')) {
+            localidade = nameField.split('-')[0].trim();
+        } else {
+            localidade = nameField || '-';
+        }
+        
         const rule = item["Regra de Abertura (4h Offline)"] || "";
         const isCritical = rule.includes('🚨');
         const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
@@ -747,7 +764,16 @@ function openDrawer(item) {
     const inep = item['INEP_Extraido'] || item['INEP'] || '-';
     const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
     const nameField = item['NAME'] || item['Nome'] || '';
-    const localidade = nameField.includes('-') ? nameField.split('-')[0].trim() : (nameField || 'Localização Indisponível');
+    
+    let localidade = 'Localização Indisponível';
+    if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
+        localidade = `${item['Município']} / ${item['UF']}`;
+    } else if (nameField.includes('-')) {
+        localidade = nameField.split('-')[0].trim();
+    } else {
+        localidade = nameField || 'Localização Indisponível';
+    }
+    
     const rule = item["Regra de Abertura (4h Offline)"] || "";
     const ip = item['IP Address'] || item['IP'] || 'Não reportado';
     const timeOffline = rule.includes('- Offline há ') ? rule.split('- Offline há ')[1] : '-';
@@ -761,6 +787,9 @@ function openDrawer(item) {
     els.drawerIp.textContent = ip;
     
     els.drawerRule.textContent = rule;
+    if (els.drawerPartner) {
+        els.drawerPartner.textContent = item['Parceiro'] || 'Desconhecido';
+    }
     
     if(rule.includes('🚨')) {
         els.drawerBadge.className = 'badge badge-critical';

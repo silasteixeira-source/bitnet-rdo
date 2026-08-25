@@ -65,7 +65,12 @@ def get_escolas_eace_map(client):
         if len(data) > 1:
             df_eace = pd.DataFrame(data[1:], columns=data[0])
             mapping = {
-                str(r.iloc[3]).strip().replace('.0', ''): str(r.iloc[4]).strip()
+                str(r.iloc[3]).strip().replace('.0', ''): {
+                    'nome': str(r.iloc[4]).strip(),
+                    'uf': str(r.iloc[1]).strip(),
+                    'municipio': str(r.iloc[2]).strip(),
+                    'parceiro': str(r.iloc[9]).strip()
+                }
                 for _, r in df_eace.iterrows()
                 if str(r.iloc[3]).strip()
             }
@@ -354,7 +359,12 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         df_alvo = df_alvo.drop(columns=cols_drop, errors='ignore')
         
         if 'INEP_Extraido' in df_alvo.columns:
-            df_alvo['Nome da Escola'] = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True).map(escolas_eace_map).fillna("Não Cadastrado na EACE")
+            inep_series = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+            df_alvo['Nome da Escola'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('nome', "Não Cadastrado na EACE"))
+            df_alvo['UF'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('uf', "-"))
+            df_alvo['Município'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('municipio', "-"))
+            df_alvo['Parceiro'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('parceiro', "-"))
+            
             cols = list(df_alvo.columns)
             if 'Nome da Escola' in cols:
                 cols.remove('Nome da Escola')
