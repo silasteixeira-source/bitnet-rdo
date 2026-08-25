@@ -1,9 +1,10 @@
 import os
 import json
+import math
 from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI()
 
@@ -25,6 +26,15 @@ def verify_api_key(x_api_key: str = Header(None)):
 def health_check():
     return {"status": "ok"}
 
+def sanitize_data(obj):
+    if isinstance(obj, float) and math.isnan(obj):
+        return None
+    elif isinstance(obj, dict):
+        return {k: sanitize_data(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_data(v) for v in obj]
+    return obj
+
 @app.get("/api/v1/dashboard")
 def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
     snapshot_path = f"/app/.streamlit/snapshots/{tenant}.json"
@@ -38,6 +48,7 @@ def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
     try:
         with open(snapshot_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        data = sanitize_data(data)
         return data
     except Exception as e:
         return {"error": f"Erro ao ler snapshot local: {e}"}
