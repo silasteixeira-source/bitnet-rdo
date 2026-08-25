@@ -307,10 +307,8 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         if m == 60:
             h += 1
             m = 0
-        if diff_hours >= 12.0:
-            return f"🚨 CRÍTICO (>12h) - Offline há {h}h{m}m"
-        elif diff_hours >= 4.0:
-            return f"✅ PODE ABRIR (>4h) - Offline há {h}h{m}m"
+        if diff_hours >= 4.0:
+            return f"🚨 CRÍTICO (>4h) - Offline há {h}h{m}m"
         else:
             return f"⏳ AGUARDAR (<4h) - Offline há {h}h{m}m"
 
