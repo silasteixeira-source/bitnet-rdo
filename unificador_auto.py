@@ -365,8 +365,16 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     df_ja_aberto = formatar_e_limpar(df_ja_aberto)
     df_fechar_chamado = formatar_e_limpar(df_fechar_chamado)
     df_ignorados = formatar_e_limpar(df_ignorados)
+    
+    # NOVO: Separar os 'Não Cadastrado na EACE' da fila principal de Falta Abrir
+    if 'Nome da Escola' in df_falta_abrir.columns:
+        mask_nao_cad = df_falta_abrir['Nome da Escola'] == "Não Cadastrado na EACE"
+        df_nao_cadastrado = df_falta_abrir[mask_nao_cad].copy()
+        df_falta_abrir = df_falta_abrir[~mask_nao_cad].copy()
+    else:
+        df_nao_cadastrado = pd.DataFrame()
 
-    log(f"Resultados calculados -> Falta Abrir: {len(df_falta_abrir)} | Já Possui: {len(df_ja_aberto)} | Fechar: {len(df_fechar_chamado)} | Ignorados: {len(df_ignorados)}")
+    log(f"Resultados calculados -> Falta Abrir: {len(df_falta_abrir)} | Não Cadastrados: {len(df_nao_cadastrado)} | Já Possui: {len(df_ja_aberto)} | Fechar: {len(df_fechar_chamado)} | Ignorados: {len(df_ignorados)}")
 
     # NOVO: Salvar JSON Snapshot
     snapshot_dir = "/app/.streamlit/snapshots"
@@ -397,6 +405,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
             update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
             update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
+            update_gsheet_tab(client, gsheet_url, "Nao_Cadastrados_EACE", df_nao_cadastrado)
             update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
             log("✅ Sincronização Google Sheets concluída com sucesso!")
             
