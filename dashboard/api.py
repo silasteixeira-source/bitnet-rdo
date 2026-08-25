@@ -80,7 +80,7 @@ def get_dashboard_data():
         fetch_tenant(BITNET_URL, "bitnet")
         fetch_tenant(ST1_URL, "st1")
     except Exception as e:
-        return {"error": f"Erro de API do Google: {str(e)}"}
+        return {"error": f"Erro de leitura na fonte (Google API): Não foi possível obter os dados atualizados. Detalhes: {str(e)}"}
 
     # Salva no cache
     if data["bitnet"] and data["st1"]:

@@ -60,15 +60,18 @@ async function fetchDashboardData() {
         // --- BLINDAGEM CONTRA PLANILHAS ZERADAS ---
         // Se as três abas de um tenant vierem zeradas, assumimos que o robô do cliente
         // está no meio de uma atualização (wiping). Então mantemos os dados antigos!
+        let usingStaleData = false;
         if (dashboardData) {
             const isBitnetEmpty = data.bitnet.falta_abrir.length === 0 && data.bitnet.abertos.length === 0 && data.bitnet.fechar.length === 0;
             if (isBitnetEmpty) {
                 data.bitnet = dashboardData.bitnet;
+                usingStaleData = true;
             }
             
             const isSt1Empty = data.st1.falta_abrir.length === 0 && data.st1.abertos.length === 0 && data.st1.fechar.length === 0;
             if (isSt1Empty) {
                 data.st1 = dashboardData.st1;
+                usingStaleData = true;
             }
         }
 
@@ -77,8 +80,13 @@ async function fetchDashboardData() {
         loadTable(currentView);
         updateSheetTime();
 
-        statusEl.innerText = 'SYNCHRONIZED';
-        statusEl.style.color = 'var(--success)';
+        if (usingStaleData) {
+            statusEl.innerText = 'STALE DATA (SNAPSHOT)';
+            statusEl.style.color = 'var(--warning)';
+        } else {
+            statusEl.innerText = 'SYNCHRONIZED';
+            statusEl.style.color = 'var(--success)';
+        }
         
         const lastCheckEl = document.getElementById('last-check');
         if (lastCheckEl) {
@@ -151,54 +159,110 @@ function loadTable(viewType) {
     const tbody = document.querySelector('#data-table tbody');
     const title = document.getElementById('table-title');
     
-    let html = '';
+    // Limpa a tabela de forma segura
+    tbody.innerHTML = '';
 
     if (viewType === 'falta_abrir') {
         title.innerText = `DETALHES DE OCORRÊNCIAS - FALTA ABRIR OS (${records.length})`;
-        records.forEach(row => {
-            const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
-            const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
-            const nameField = row['NAME'] || row['Nome'] || '';
-            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
-            const regra = row['Regra de Abertura (4h Offline)'] || 'Verificar';
-            
-            let badgeClass = 'wait';
-            if (regra.includes('✅')) badgeClass = 'danger'; // Pode Abrir (Ação necessária)
-            
-            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge ${badgeClass}">${regra}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">ABRIR CHAMADO</button></td></tr>`;
-        });
-    } 
-    else if (viewType === 'abertos') {
+    } else if (viewType === 'abertos') {
         title.innerText = `DETALHES DE OCORRÊNCIAS - OS EM ANDAMENTO (${records.length})`;
-        records.forEach(row => {
-            const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
-            const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
-            const nameField = row['NAME'] || row['Nome'] || '';
-            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
-            const ticket = row['Ticket#'] || 'OS';
-            const status = row['Status'] || 'Análise';
-            
-            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge warning">${ticket} - ${status}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VER DETALHES</button></td></tr>`;
-        });
-    } 
-    else if (viewType === 'fechar') {
+    } else if (viewType === 'fechar') {
         title.innerText = `DETALHES DE OCORRÊNCIAS - FALTA FECHAR OS (${records.length})`;
-        records.forEach(row => {
-            const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
-            const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
-            const nameField = row['NAME'] || row['Nome'] || '';
-            const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
-            const ticket = row['Ticket#'] || 'OS';
+    }
+
+    if (records.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.style.textAlign = 'center';
+        td.style.padding = '30px';
+        td.style.color = 'var(--success)';
+        td.textContent = 'Tudo Operacional! Nenhuma ação pendente.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    records.forEach(row => {
+        const inep = row['INEP_Extraido'] || row['INEP'] || 'N/A';
+        const name = row['Nome da Escola'] || row['Escola'] || 'Desconhecida';
+        const nameField = row['NAME'] || row['Nome'] || '';
+        const cidade = nameField.includes('-') ? nameField.split('-')[0].trim() : nameField;
+        const ticket = row['Ticket#'] || 'OS';
+        const status = row['Status'] || 'Análise';
+        const regra = row['Regra de Abertura (4h Offline)'] || 'Verificar';
+        
+        const tr = document.createElement('tr');
+        
+        // INEP
+        const tdInep = document.createElement('td');
+        tdInep.textContent = inep;
+        tr.appendChild(tdInep);
+        
+        // CIDADE
+        const tdCidade = document.createElement('td');
+        tdCidade.textContent = cidade;
+        tr.appendChild(tdCidade);
+        
+        // ESCOLA
+        const tdNome = document.createElement('td');
+        tdNome.textContent = name;
+        tr.appendChild(tdNome);
+
+        // STATUS
+        const tdStatus = document.createElement('td');
+        const spanBadge = document.createElement('span');
+        
+        // AÇÃO
+        const tdAcao = document.createElement('td');
+        const btnAcao = document.createElement('button');
+        btnAcao.className = 'action-btn';
+        btnAcao.style.padding = '4px';
+        btnAcao.style.fontSize = '0.7rem';
+        
+        if (viewType === 'falta_abrir') {
+            let badgeClass = 'wait';
+            if (regra.includes('✅')) badgeClass = 'danger';
+            spanBadge.className = `badge ${badgeClass}`;
+            spanBadge.textContent = regra;
             
-            html += `<tr><td>${inep}</td><td>${cidade}</td><td>${name}</td><td><span class="badge success">FECHAR ${ticket}</span></td><td><button class="action-btn" style="padding: 4px; font-size: 0.7rem;">VALIDAR</button></td></tr>`;
-        });
-    }
+            btnAcao.textContent = 'COPIAR DADOS';
+            btnAcao.setAttribute('aria-label', `Copiar dados da escola ${name}`);
+            btnAcao.onclick = () => {
+                const textToCopy = `INEP: ${inep}\nEscola: ${name}\nCidade: ${cidade}\nStatus: ${regra}`;
+                navigator.clipboard.writeText(textToCopy);
+                btnAcao.textContent = 'COPIADO!';
+                setTimeout(() => btnAcao.textContent = 'COPIAR DADOS', 2000);
+            };
+        } else if (viewType === 'abertos') {
+            spanBadge.className = `badge warning`;
+            spanBadge.textContent = `${ticket} - ${status}`;
+            
+            btnAcao.textContent = 'VER DETALHES';
+            btnAcao.setAttribute('aria-label', `Ver detalhes do ticket ${ticket}`);
+            btnAcao.onclick = () => alert(`Detalhes do Ticket: ${ticket}\nEscola: ${name}\nStatus: ${status}`);
+        } else if (viewType === 'fechar') {
+            spanBadge.className = `badge success`;
+            spanBadge.textContent = `FECHAR ${ticket}`;
+            
+            btnAcao.textContent = 'COPIAR DADOS';
+            btnAcao.setAttribute('aria-label', `Copiar dados para fechamento do ticket ${ticket}`);
+            btnAcao.onclick = () => {
+                const textToCopy = `INEP: ${inep}\nEscola: ${name}\nTicket para fechar: ${ticket}`;
+                navigator.clipboard.writeText(textToCopy);
+                btnAcao.textContent = 'COPIADO!';
+                setTimeout(() => btnAcao.textContent = 'COPIAR DADOS', 2000);
+            };
+        }
 
-    if (html === '') {
-        html = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: var(--success);">Tudo Operacional! Nenhuma ação pendente.</td></tr>';
-    }
+        tdStatus.appendChild(spanBadge);
+        tr.appendChild(tdStatus);
+        
+        tdAcao.appendChild(btnAcao);
+        tr.appendChild(tdAcao);
 
-    tbody.innerHTML = html;
+        tbody.appendChild(tr);
+    });
 }
 
 // Inicia

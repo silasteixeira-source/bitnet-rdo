@@ -15,11 +15,11 @@
     <div class="app-window">
         
         <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <div class="menu-icon active" id="btn-bitnet" onclick="switchTenant('bitnet')" title="BITNET">
+        <aside class="sidebar" aria-label="Menu Lateral">
+            <div class="menu-icon active" id="btn-bitnet" onclick="switchTenant('bitnet')" title="BITNET" role="button" aria-label="Selecionar tenant BITNET" tabindex="0">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             </div>
-            <div class="menu-icon" id="btn-st1" onclick="switchTenant('st1')" title="ST1">
+            <div class="menu-icon" id="btn-st1" onclick="switchTenant('st1')" title="ST1" role="button" aria-label="Selecionar tenant ST1" tabindex="0">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
             </div>
         </aside>
@@ -51,7 +51,7 @@
                         <div class="value-box" id="val-falta-abrir">-</div>
                         <p class="desc">Dispositivos Offline no Omada</p>
                     </div>
-                    <button class="action-btn" onclick="loadTable('falta_abrir')">Listar Ocorrências</button>
+                    <button class="action-btn" onclick="loadTable('falta_abrir')" aria-label="Listar ocorrências que faltam abrir OS">Listar Ocorrências</button>
                 </div>
 
                 <!-- Card Andamento -->
@@ -61,7 +61,7 @@
                         <div class="value-box" id="val-abertos">-</div>
                         <p class="desc">Chamados em Tratamento</p>
                     </div>
-                    <button class="action-btn" onclick="loadTable('abertos')">Gerenciar OS</button>
+                    <button class="action-btn" onclick="loadTable('abertos')" aria-label="Gerenciar OS em andamento">Gerenciar OS</button>
                 </div>
 
                 <!-- Card Fechar -->
@@ -71,7 +71,7 @@
                         <div class="value-box" id="val-fechar">-</div>
                         <p class="desc">Links Recuperados</p>
                     </div>
-                    <button class="action-btn" onclick="loadTable('fechar')">Validar Fechamento</button>
+                    <button class="action-btn" onclick="loadTable('fechar')" aria-label="Validar fechamento de OS recuperadas">Validar Fechamento</button>
                 </div>
 
                 <!-- Painel Lateral Decorativo (Status) -->
@@ -110,7 +110,7 @@
             <section class="table-section">
                 <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h2 class="table-title" id="table-title">DETALHES DE OCORRÊNCIAS - CARREGANDO...</h2>
-                    <input type="text" id="search-inep" class="search-input" placeholder="Pesquisar INEP, Cidade ou Escola..." oninput="filterTable()">
+                    <input type="text" id="search-inep" class="search-input" placeholder="Pesquisar INEP, Cidade ou Escola..." oninput="filterTable()" aria-label="Pesquisar por INEP, Cidade ou Escola">
                 </div>
                 <div class="table-container">
                     <table id="data-table">
