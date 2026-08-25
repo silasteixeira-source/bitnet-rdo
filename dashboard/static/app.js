@@ -34,6 +34,7 @@ function switchTenant(tenant) {
     if (dashboardData) {
         updateCards();
         loadTable(currentView);
+        updateSheetTime();
     }
 }
 
@@ -74,9 +75,16 @@ async function fetchDashboardData() {
         dashboardData = data;
         updateCards();
         loadTable(currentView);
+        updateSheetTime();
 
         statusEl.innerText = 'SYNCHRONIZED';
         statusEl.style.color = 'var(--success)';
+        
+        const lastCheckEl = document.getElementById('last-check');
+        if (lastCheckEl) {
+            const now = new Date();
+            lastCheckEl.innerText = now.toLocaleTimeString();
+        }
     } catch (error) {
         console.error("Erro no Sync:", error);
         statusEl.innerText = 'RETRYING...';
@@ -84,6 +92,26 @@ async function fetchDashboardData() {
         // Importante: NÃO zeramos a variável dashboardData.
         // Assim o painel continua mostrando os dados antigos enquanto tenta reconectar!
     }
+}
+
+// Atualizar horário da planilha
+function updateSheetTime() {
+    let sheetTime = '-';
+    
+    // Procura o campo 'Atualizado Em' na primeira linha que encontrar
+    const views = ['falta_abrir', 'abertos', 'fechar'];
+    for (let view of views) {
+        const records = dashboardData[currentTenant][view];
+        if (records && records.length > 0) {
+            if (records[0]['Atualizado Em']) {
+                sheetTime = records[0]['Atualizado Em'];
+                break;
+            }
+        }
+    }
+    
+    const el = document.getElementById('sheet-updated');
+    if (el) el.innerText = sheetTime;
 }
 
 // Atualizar Números nos Cards
