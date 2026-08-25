@@ -266,7 +266,11 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     log("3/4 - Cruzando com Controle de OS (EACE)...")
     df_os = pd.read_excel(os_path)
     df_os_abertos = df_os[~df_os['Status'].astype(str).str.upper().str.contains('CONCLUÍDO|CONCLUIDO|CANCELADO|FECHADO', regex=True, na=False)].copy()
-    ineps_com_chamado = df_os_abertos['INEP'].dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
+    
+    if 'INEP' in df_os_abertos.columns:
+        df_os_abertos['INEP'] = df_os_abertos['INEP'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+        
+    ineps_com_chamado = df_os_abertos['INEP'].dropna().tolist()
     
     mask_tem_chamado = df_validos['INEP_Extraido'].isin(ineps_com_chamado)
     df_falta_abrir = df_validos[~mask_tem_chamado].copy()
