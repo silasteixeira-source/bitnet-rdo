@@ -179,11 +179,14 @@ window.switchTenant = function(tenant) {
         document.documentElement.style.setProperty('--brand-active', 'var(--brand-bitnet)');
     }
 
-    if(state.lastValidData) {
-        updateUI();
-    } else {
-        fetchData();
-    }
+    // Limpa a tela mostrando os skeletons (Opcional mas dá feedback imediato)
+    els.tableOverview.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
+    els.tableIncidents.innerHTML = '<tr><td colspan="7"><div class="skeleton sk-text"></div></td></tr>';
+    if(els.tableOs) els.tableOs.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
+    if(els.tableRecoveries) els.tableRecoveries.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
+
+    // Sempre busca os dados novos ao trocar
+    fetchData();
 };
 
 // API Fetch
