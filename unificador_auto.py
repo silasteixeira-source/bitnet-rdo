@@ -359,7 +359,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
                 df_alvo = df_alvo[cols]
                 
         df_alvo['Atualizado Em'] = hora_execucao_br
-        return df_alvo
+        return df_alvo.fillna("")
 
     df_falta_abrir = formatar_e_limpar(df_falta_abrir)
     df_ja_aberto = formatar_e_limpar(df_ja_aberto)
