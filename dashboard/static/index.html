@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOC Operations Center</title>
-    <link rel="stylesheet" href="style.css?v=24">
+    <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
 
@@ -80,22 +80,22 @@
             <!-- View: Visão Geral -->
             <div class="view active" id="view-overview">
                 <div class="kpi-grid">
-                    <div class="kpi-card" style="border-top: 3px solid var(--status-critical);">
+                    <div class="kpi-card" onclick="navigateFromKpi('critical')" style="border-top: 3px solid var(--status-critical);" title="Clique para ver incidentes críticos">
                         <span class="kpi-title">Incidentes Críticos</span>
                         <span class="kpi-value" id="kpi-critical">-</span>
                         <span class="kpi-desc">Prontos para abertura (>4h)</span>
                     </div>
-                    <div class="kpi-card" style="border-top: 3px solid var(--status-warning);">
+                    <div class="kpi-card" onclick="navigateFromKpi('wait')" style="border-top: 3px solid var(--status-warning);" title="Clique para ver incidentes aguardando SLA">
                         <span class="kpi-title">Aguardando Janela</span>
                         <span class="kpi-value" id="kpi-wait">-</span>
                         <span class="kpi-desc">Offline abaixo do SLA (<4h)</span>
                     </div>
-                    <div class="kpi-card" style="border-top: 3px solid var(--status-info);">
+                    <div class="kpi-card" onclick="navigateFromKpi('os')" style="border-top: 3px solid var(--status-info);" title="Clique para ver as OS em andamento">
                         <span class="kpi-title">OS Ativas</span>
                         <span class="kpi-value" id="kpi-os">-</span>
                         <span class="kpi-desc">Chamados em tratamento EACE</span>
                     </div>
-                    <div class="kpi-card" style="border-top: 3px solid var(--status-success);">
+                    <div class="kpi-card" onclick="navigateFromKpi('recovery')" style="border-top: 3px solid var(--status-success);" title="Clique para ver escolas recuperadas">
                         <span class="kpi-title">Recuperações</span>
                         <span class="kpi-value" id="kpi-recovery">-</span>
                         <span class="kpi-desc">Voltaram online, aguardando val.</span>
@@ -329,6 +329,6 @@
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";
     </script>
-    <script src="app.js?v=24"></script>
+    <script src="app.js?v=25"></script>
 </body>
 </html>

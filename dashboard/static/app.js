@@ -174,6 +174,27 @@ function switchView(viewId) {
     }
 }
 
+// Função para Navegar a partir dos Cards de KPI
+window.navigateFromKpi = function(kpiType) {
+    if (kpiType === 'critical') {
+        document.querySelector('.nav-item[data-target="view-incidents"]').click();
+        els.filterStatus.value = "CRÍTICO";
+        els.filterStatus.dispatchEvent(new Event('change'));
+        const tab = document.querySelector('.tab[data-tab="critico"]');
+        if (tab) tab.click();
+    } else if (kpiType === 'wait') {
+        document.querySelector('.nav-item[data-target="view-incidents"]').click();
+        els.filterStatus.value = "AGUARDAR";
+        els.filterStatus.dispatchEvent(new Event('change'));
+        const tab = document.querySelector('.tab[data-tab="aguardar"]');
+        if (tab) tab.click();
+    } else if (kpiType === 'os') {
+        document.querySelector('.nav-item[data-target="view-os"]').click();
+    } else if (kpiType === 'recovery') {
+        document.querySelector('.nav-item[data-target="view-recoveries"]').click();
+    }
+};
+
 // Tenant Switching
 window.switchTenant = function(tenant) {
     if(state.tenant === tenant) return;
