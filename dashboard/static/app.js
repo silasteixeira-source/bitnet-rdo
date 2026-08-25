@@ -292,8 +292,8 @@ window.switchTenant = function(tenant) {
     // Limpa a tela mostrando os skeletons (Opcional mas dá feedback imediato)
     els.tableOverview.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
     els.tableIncidents.innerHTML = '<tr><td colspan="7"><div class="skeleton sk-text"></div></td></tr>';
-    if(els.tableOs) els.tableOs.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
-    if(els.tableRecoveries) els.tableRecoveries.innerHTML = '<tr><td colspan="5"><div class="skeleton sk-text"></div></td></tr>';
+    if(els.tableOs) els.tableOs.innerHTML = '<tr><td colspan="6"><div class="skeleton sk-text"></div></td></tr>';
+    if(els.tableRecoveries) els.tableRecoveries.innerHTML = '<tr><td colspan="6"><div class="skeleton sk-text"></div></td></tr>';
 
     // Sempre busca os dados novos ao trocar
     fetchData();
@@ -797,7 +797,7 @@ function renderOs() {
     const list = state.lastValidData.abertos || [];
     
     if(list.length === 0) {
-        els.tableOs.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3>Nenhuma OS em Andamento</h3></div></td></tr>`;
+        els.tableOs.innerHTML = `<tr><td colspan="6"><div class="empty-state"><h3>Nenhuma OS em Andamento</h3></div></td></tr>`;
         return;
     }
     
@@ -806,6 +806,16 @@ function renderOs() {
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
         const ticket = item['Ticket#'] || 'S/N';
         const status = item['Status'] || 'Em Análise';
+        
+        const nameField = item['NAME'] || item['Nome'] || '';
+        let localidade = '-';
+        if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Municipio']} / ${item['UF']}`;
+        } else if (nameField.includes('-')) {
+            localidade = nameField.split('-')[0].trim();
+        } else {
+            localidade = nameField || '-';
+        }
         
         const tr = document.createElement('tr');
         
@@ -821,6 +831,9 @@ function renderOs() {
         const tdEscola = document.createElement('td');
         tdEscola.textContent = name;
         
+        const tdLoc = document.createElement('td');
+        tdLoc.textContent = localidade;
+        
         const tdInep = document.createElement('td');
         tdInep.textContent = inep;
         
@@ -834,6 +847,7 @@ function renderOs() {
         tr.appendChild(tdTicket);
         tr.appendChild(tdStatus);
         tr.appendChild(tdEscola);
+        tr.appendChild(tdLoc);
         tr.appendChild(tdInep);
         tr.appendChild(tdAcao);
         
@@ -848,7 +862,7 @@ function renderRecoveries() {
     const list = state.lastValidData.fechar || [];
     
     if(list.length === 0) {
-        els.tableRecoveries.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3>Nenhuma Recuperação Pendente</h3></div></td></tr>`;
+        els.tableRecoveries.innerHTML = `<tr><td colspan="6"><div class="empty-state"><h3>Nenhuma Recuperação Pendente</h3></div></td></tr>`;
         return;
     }
     
@@ -856,6 +870,16 @@ function renderRecoveries() {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
         const ticket = item['Ticket#'] || 'S/N';
+        
+        const nameField = item['NAME'] || item['Nome'] || '';
+        let localidade = '-';
+        if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Municipio']} / ${item['UF']}`;
+        } else if (nameField.includes('-')) {
+            localidade = nameField.split('-')[0].trim();
+        } else {
+            localidade = nameField || '-';
+        }
         
         const tr = document.createElement('tr');
         
@@ -874,6 +898,9 @@ function renderRecoveries() {
         const tdEscola = document.createElement('td');
         tdEscola.textContent = name;
         
+        const tdLoc = document.createElement('td');
+        tdLoc.textContent = localidade;
+        
         const tdInep = document.createElement('td');
         tdInep.textContent = inep;
         
@@ -887,6 +914,7 @@ function renderRecoveries() {
         tr.appendChild(tdTicket);
         tr.appendChild(tdStatus);
         tr.appendChild(tdEscola);
+        tr.appendChild(tdLoc);
         tr.appendChild(tdInep);
         tr.appendChild(tdAcao);
         
