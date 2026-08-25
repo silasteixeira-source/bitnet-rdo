@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import datetime
 from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -49,6 +50,11 @@ def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
         with open(snapshot_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         data = sanitize_data(data)
+        
+        # Injeta o timestamp de modificação do arquivo para o dashboard detectar atrasos
+        mtime = os.path.getmtime(snapshot_path)
+        data['timestamp'] = datetime.datetime.fromtimestamp(mtime).isoformat()
+        
         return data
     except Exception as e:
         return {"error": f"Erro ao ler snapshot local: {e}"}

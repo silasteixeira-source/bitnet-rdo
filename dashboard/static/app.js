@@ -10,6 +10,7 @@ const state = {
     currentFilteredList: [],
     previousRecoveredIneps: new Set(),
     alertsEnabled: false,
+    hasAlertedStaleData: false,
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
     currentView: 'view-overview'
 };
@@ -362,8 +363,28 @@ async function fetchData() {
         
         if (diffMin > 10) {
             setSyncState('warning', `Dados Atrasados (${Math.floor(diffMin)}m)`);
+            
+            // Lógica de alerta para automação parada
+            if (state.alertsEnabled && !state.hasAlertedStaleData) {
+                state.hasAlertedStaleData = true;
+                
+                try {
+                    // Som de aviso/alerta
+                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2866/2866-preview.mp3');
+                    audio.volume = 0.6;
+                    audio.play().catch(e => console.warn("Audio blocked", e));
+                } catch(e) {}
+                
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification("⚠️ Alerta NOC", {
+                        body: `A automação parou! Dados atrasados há ${Math.floor(diffMin)} minutos. Verifique o servidor.`,
+                        icon: "https://cdn-icons-png.flaticon.com/512/564/564619.png"
+                    });
+                }
+            }
         } else {
             setSyncState('success', 'Atualizado agora');
+            state.hasAlertedStaleData = false;
         }
         
         updateUI();
