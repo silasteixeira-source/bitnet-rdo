@@ -421,8 +421,8 @@ function renderOverview() {
         const nameField = item['NAME'] || item['Nome'] || '';
         
         let localidade = '-';
-        if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
-            localidade = `${item['Município']} / ${item['UF']}`;
+        if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Municipio']} / ${item['UF']}`;
         } else if (nameField.includes('-')) {
             localidade = nameField.split('-')[0].trim();
         } else {
@@ -579,8 +579,8 @@ function renderIncidents() {
         const nameField = item['NAME'] || item['Nome'] || '';
         
         let localidade = '-';
-        if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
-            localidade = `${item['Município']} / ${item['UF']}`;
+        if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+            localidade = `${item['Municipio']} / ${item['UF']}`;
         } else if (nameField.includes('-')) {
             localidade = nameField.split('-')[0].trim();
         } else {
@@ -766,8 +766,8 @@ function openDrawer(item) {
     const nameField = item['NAME'] || item['Nome'] || '';
     
     let localidade = 'Localização Indisponível';
-    if (item['Município'] && item['UF'] && item['Município'] !== '-' && item['UF'] !== '-') {
-        localidade = `${item['Município']} / ${item['UF']}`;
+    if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+        localidade = `${item['Municipio']} / ${item['UF']}`;
     } else if (nameField.includes('-')) {
         localidade = nameField.split('-')[0].trim();
     } else {

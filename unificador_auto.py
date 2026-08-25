@@ -362,7 +362,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             inep_series = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
             df_alvo['Nome da Escola'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('nome', "Não Cadastrado na EACE"))
             df_alvo['UF'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('uf', "-"))
-            df_alvo['Município'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('municipio', "-"))
+            df_alvo['Municipio'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('municipio', "-"))
             df_alvo['Parceiro'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('parceiro', "-"))
             
             cols = list(df_alvo.columns)
