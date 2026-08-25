@@ -3,7 +3,7 @@ import json
 from fastapi import FastAPI, Depends, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
@@ -15,7 +15,6 @@ app.add_middleware(
 )
 
 NOC_API_KEY = os.getenv("NOC_API_KEY", "secret123")
-templates = Jinja2Templates(directory="static")
 
 def verify_api_key(x_api_key: str = Header(None)):
     if x_api_key != NOC_API_KEY:
@@ -44,8 +43,11 @@ def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
         return {"error": f"Erro ao ler snapshot local: {e}"}
 
 @app.get("/")
-def serve_index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "NOC_API_KEY": NOC_API_KEY})
+def serve_index():
+    with open("static/index.html", "r", encoding="utf-8") as f:
+        content = f.read()
+    content = content.replace("{{ NOC_API_KEY }}", NOC_API_KEY)
+    return HTMLResponse(content=content)
 
 # Serve a interface web (app.js, style.css, imagens)
 app.mount("/", StaticFiles(directory="static"), name="static")
