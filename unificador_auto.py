@@ -197,7 +197,8 @@ def sort_by_uptime(df, status_col):
         return df
     temp_dates = df[status_col].astype(str).str.extract(r'(?i)Uptime:\s*(.*)')[0]
     df['_temp_date'] = pd.to_datetime(temp_dates, errors='coerce')
-    df = df.sort_values(by='_temp_date', ascending=False).drop(columns=['_temp_date'])
+    # ascending=True para priorizar os que caíram há mais tempo (datas mais antigas no topo)
+    df = df.sort_values(by='_temp_date', ascending=True).drop(columns=['_temp_date'])
     return df
 
 def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_google=True, gsheet_url=DEFAULT_BITNET_URL, omada_gsheet_url=DEFAULT_OMADA_GSHEET_URL, tenant="bitnet"):
@@ -306,7 +307,12 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         if m == 60:
             h += 1
             m = 0
-        return f"✅ PODE ABRIR (>4h) - Offline há {h}h{m}m" if diff_hours >= 4.0 else f"⏳ AGUARDAR (<4h) - Offline há {h}h{m}m"
+        if diff_hours >= 12.0:
+            return f"🚨 CRÍTICO (>12h) - Offline há {h}h{m}m"
+        elif diff_hours >= 4.0:
+            return f"✅ PODE ABRIR (>4h) - Offline há {h}h{m}m"
+        else:
+            return f"⏳ AGUARDAR (<4h) - Offline há {h}h{m}m"
 
     if not df_falta_abrir.empty and status_new in df_falta_abrir.columns:
         df_falta_abrir['Regra de Abertura (4h Offline)'] = df_falta_abrir[status_new].apply(avaliar_regra_4h)

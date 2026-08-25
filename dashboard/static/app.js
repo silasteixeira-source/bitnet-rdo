@@ -233,7 +233,8 @@ function loadTable(viewType) {
         
         if (viewType === 'falta_abrir') {
             let badgeClass = 'wait';
-            if (regra.includes('✅')) badgeClass = 'danger';
+            if (regra.includes('🚨')) badgeClass = 'critical';
+            else if (regra.includes('✅')) badgeClass = 'danger';
             spanBadge.className = `badge ${badgeClass}`;
             spanBadge.textContent = regra;
             

@@ -232,6 +232,8 @@ tr:hover { background: rgba(255,255,255,0.02); }
 .badge.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.5); }
 .badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.5); }
 .badge.success { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.5); }
+.badge.critical { background: rgba(239, 68, 68, 0.3); color: #fff; border: 1px solid var(--danger); animation: pulse-critical 2s infinite; }
+@keyframes pulse-critical { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 6px; }
