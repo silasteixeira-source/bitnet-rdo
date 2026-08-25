@@ -8,6 +8,8 @@ const state = {
     filterStatus: '',
     searchQuery: '',
     currentFilteredList: [],
+    previousRecoveredIneps: new Set(),
+    alertsEnabled: false,
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
     currentView: 'view-overview'
 };
@@ -52,6 +54,7 @@ const els = {
     filterStatus: document.getElementById('filter-status'),
     btnClearFilters: document.getElementById('btn-clear-filters'),
     btnExportExcel: document.getElementById('btn-export-excel'),
+    btnEnableAlerts: document.getElementById('btn-enable-alerts'),
     searchInput: document.querySelector('.search-input'),
     tabs: document.querySelectorAll('.tab'),
     countTodos: document.getElementById('count-todos'),
@@ -187,6 +190,30 @@ function setupEventListeners() {
         });
     }
 
+    // Enable Alerts
+    if (els.btnEnableAlerts) {
+        els.btnEnableAlerts.addEventListener('click', () => {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        state.alertsEnabled = true;
+                        els.btnEnableAlerts.style.display = 'none';
+                        // Play silent sound to unlock AudioContext on browsers
+                        try {
+                            const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+                            silentAudio.play().catch(()=>{});
+                        } catch(e) {}
+                        new Notification("Alertas NOC Ativados ✅", { body: "Você será notificado quando houver novas recuperações." });
+                    } else {
+                        alert("Você precisa permitir notificações no navegador para receber alertas.");
+                    }
+                });
+            } else {
+                alert("Este navegador não suporta notificações de sistema.");
+            }
+        });
+    }
+
     // Tabs
     els.tabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -296,6 +323,38 @@ async function fetchData() {
         
         state.lastValidData = state.data;
         state.isError = false;
+        
+        // --- Lógica de Alertas de Recuperação ---
+        const currentRecoveredIneps = new Set((state.data.fechar || []).map(i => i.INEP_Extraido || i.INEP));
+        
+        // Se já tínhamos dados anteriores e a notificação está ligada
+        if (state.previousRecoveredIneps.size > 0 && state.alertsEnabled) {
+            const newRecoveries = (state.data.fechar || []).filter(item => {
+                const inep = item.INEP_Extraido || item.INEP;
+                return !state.previousRecoveredIneps.has(inep);
+            });
+            
+            if (newRecoveries.length > 0) {
+                // Tocar Som de Notificação
+                try {
+                    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                    audio.volume = 0.5;
+                    audio.play().catch(e => console.warn("Audio autoplay blocked", e));
+                } catch(e) {}
+                
+                // Enviar push system notification
+                if ("Notification" in window && Notification.permission === "granted") {
+                    newRecoveries.forEach(item => {
+                        const name = item['Nome da Escola'] || item['NAME'] || item['Escola'] || 'Desconhecida';
+                        new Notification("Escola Recuperada! ✅", {
+                            body: `A escola ${name} está online novamente.`,
+                            icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png"
+                        });
+                    });
+                }
+            }
+        }
+        state.previousRecoveredIneps = currentRecoveredIneps;
         
         // Verifica staleness (Ex: timestamp mais antigo que 10 min)
         const ts = state.data.timestamp ? new Date(state.data.timestamp).getTime() : Date.now();
