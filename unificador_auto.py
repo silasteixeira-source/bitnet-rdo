@@ -380,6 +380,58 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
 
     log(f"Resultados calculados -> Falta Abrir: {len(df_falta_abrir)} | Não Cadastrados: {len(df_nao_cadastrado)} | Já Possui: {len(df_ja_aberto)} | Fechar: {len(df_fechar_chamado)} | Ignorados: {len(df_ignorados)}")
 
+    # ==========================
+    # VERIFICAÇÃO DE SAÚDE (HEALTH)
+    # ==========================
+    health_status = {
+        "omada": "ok",
+        "eace": "ok",
+        "sheets": "ok"
+    }
+    
+    agora = time.time()
+    limite_segundos = 600  # 10 minutos
+    
+    # Saúde do Omada (Verifica timestamp do arquivo Omada Atual)
+    if not str(omada_new_path).startswith("http") and os.path.exists(omada_new_path):
+        mtime_omada = os.path.getmtime(omada_new_path)
+        if (agora - mtime_omada) > limite_segundos:
+            health_status["omada"] = "error"
+    else:
+        health_status["omada"] = "error"
+        
+    # Saúde do EACE/OS (Verifica timestamp do arquivo de OS)
+    if not str(os_path).startswith("http") and os.path.exists(os_path):
+        mtime_eace = os.path.getmtime(os_path)
+        if (agora - mtime_eace) > limite_segundos:
+            health_status["eace"] = "error"
+    else:
+        health_status["eace"] = "error"
+        
+    if not client:
+        health_status["sheets"] = "error"
+
+    # ==========================
+    # GOOGLE SHEETS SYNC
+    # ==========================
+    if sync_google and client:
+        log(f"Sincronizando com o Google Sheets: {gsheet_url}")
+        try:
+            update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
+            update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
+            update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
+            update_gsheet_tab(client, gsheet_url, "Nao_Cadastrados_EACE", df_nao_cadastrado)
+            update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
+            log("✅ Sincronização Google Sheets concluída com sucesso!")
+            
+            if omada_gsheet_url:
+                sincronizar_omada_google(client, omada_gsheet_url, df_new)
+        except Exception as e:
+            log(f"❌ Erro ao atualizar o Google Sheets: {e}")
+            health_status["sheets"] = "error"
+    elif sync_google and not client:
+        log("❌ AVISO: Sincronização Google Sheets solicitada, mas não foi possível autenticar o cliente GSpread.")
+
     # NOVO: Salvar JSON Snapshot
     snapshot_dir = "/app/.streamlit/snapshots"
     if not os.path.exists("/app/.streamlit"):
@@ -392,7 +444,8 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         "falta_abrir": df_falta_abrir.to_dict(orient='records'),
         "abertos": df_ja_aberto.to_dict(orient='records'),
         "fechar": df_fechar_chamado.to_dict(orient='records'),
-        "updated_at": hora_execucao_br
+        "updated_at": hora_execucao_br,
+        "health": health_status
     }
     
     import json
@@ -402,24 +455,6 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         log(f"✅ Snapshot JSON salvo para o tenant {tenant} em: {snapshot_path}")
     except Exception as e:
         log(f"❌ Erro ao salvar snapshot JSON: {e}")
-
-    if sync_google and client:
-        log(f"Sincronizando com o Google Sheets: {gsheet_url}")
-        try:
-            update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
-            update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
-            update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
-            update_gsheet_tab(client, gsheet_url, "Nao_Cadastrados_EACE", df_nao_cadastrado)
-            update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
-            log("✅ Sincronização Google Sheets concluída com sucesso!")
-            
-            # Novo: Sincronizar planilha completa do Omada no link especificado pelo usuário
-            if omada_gsheet_url:
-                sincronizar_omada_google(client, omada_gsheet_url, df_new)
-        except Exception as e:
-            log(f"❌ Erro ao atualizar o Google Sheets: {e}")
-    elif sync_google and not client:
-        log("❌ AVISO: Sincronização Google Sheets solicitada, mas não foi possível autenticar o cliente GSpread.")
 
     return True
 

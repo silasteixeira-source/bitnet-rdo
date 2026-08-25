@@ -130,27 +130,29 @@
                         <div class="panel">
                             <div class="panel-header">Saúde das Fontes</div>
                             <div class="panel-body flex-col gap-3">
-                                <div class="flex justify-between items-center">
-                                    <div class="flex items-center gap-2">
-                                        <div class="sync-dot"></div>
-                                        <span class="text-sec">Omada Cloud</span>
-                                    </div>
-                                    <span class="badge badge-success">OK</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <div class="flex items-center gap-2">
-                                        <div class="sync-dot"></div>
-                                        <span class="text-sec">EACE / RDO</span>
-                                    </div>
-                                    <span class="badge badge-success">OK</span>
-                                </div>
-                                <div class="flex justify-between items-center">
-                                    <div class="flex items-center gap-2">
-                                        <div class="sync-dot"></div>
-                                        <span class="text-sec">Google Sheets</span>
-                                    </div>
-                                    <span class="badge badge-success">OK</span>
-                                </div>
+                                <ul class="health-list" style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:12px;">
+                                    <li id="health-item-omada" class="flex justify-between items-center">
+                                        <div class="flex items-center gap-2">
+                                            <span class="sync-dot" id="health-dot-omada"></span>
+                                            <span class="text-sec">Omada Cloud</span>
+                                        </div>
+                                        <span class="badge badge-success" id="health-badge-omada">OK</span>
+                                    </li>
+                                    <li id="health-item-eace" class="flex justify-between items-center">
+                                        <div class="flex items-center gap-2">
+                                            <span class="sync-dot" id="health-dot-eace"></span>
+                                            <span class="text-sec">EACE / RDO</span>
+                                        </div>
+                                        <span class="badge badge-success" id="health-badge-eace">OK</span>
+                                    </li>
+                                    <li id="health-item-sheets" class="flex justify-between items-center">
+                                        <div class="flex items-center gap-2">
+                                            <span class="sync-dot" id="health-dot-sheets"></span>
+                                            <span class="text-sec">Google Sheets</span>
+                                        </div>
+                                        <span class="badge badge-success" id="health-badge-sheets">OK</span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
 

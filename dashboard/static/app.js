@@ -22,6 +22,16 @@ const els = {
     
     tenantBtns: document.querySelectorAll('.tenant-btn'),
     
+    // Saúde das Fontes (Health)
+    health: {
+        omadaDot: document.getElementById('health-dot-omada'),
+        omadaBadge: document.getElementById('health-badge-omada'),
+        eaceDot: document.getElementById('health-dot-eace'),
+        eaceBadge: document.getElementById('health-badge-eace'),
+        sheetsDot: document.getElementById('health-dot-sheets'),
+        sheetsBadge: document.getElementById('health-badge-sheets')
+    },
+    
     syncStatus: document.getElementById('sync-status'),
     syncDot: document.querySelector('.sync-dot'),
     syncText: document.getElementById('sync-text'),
@@ -321,6 +331,26 @@ function updateKPIs() {
     
     els.kpiOs.textContent = osAbertasCount;
     els.kpiRecovery.textContent = recupCount;
+    
+    // Atualiza Saúde das Fontes
+    const health = state.lastValidData.health || { omada: 'ok', eace: 'ok', sheets: 'ok' };
+    
+    function setHealthUI(dotEl, badgeEl, statusStr) {
+        if (!dotEl || !badgeEl) return;
+        if (statusStr === 'error') {
+            dotEl.className = 'sync-dot error';
+            badgeEl.className = 'badge badge-critical';
+            badgeEl.textContent = 'FALHA';
+        } else {
+            dotEl.className = 'sync-dot';
+            badgeEl.className = 'badge badge-success';
+            badgeEl.textContent = 'OK';
+        }
+    }
+    
+    setHealthUI(els.health.omadaDot, els.health.omadaBadge, health.omada);
+    setHealthUI(els.health.eaceDot, els.health.eaceBadge, health.eace);
+    setHealthUI(els.health.sheetsDot, els.health.sheetsBadge, health.sheets);
     
     els.countTodos.textContent = list.length;
     els.countCritico.textContent = criticalCount;
