@@ -55,28 +55,7 @@ def get_gspread_client():
     return None
 
 def get_escolas_eace_map(client):
-    """Busca o mapeamento de código INEP -> Nome da Escola do Google Sheets."""
-    if not client:
-        return {}
-    try:
-        sh = client.open_by_key('1Onw1vaSO2SIQ_OfAoDPI6ycnXWTAZ2ijhtujAOhI9UM')
-        ws = sh.worksheet('EACE')
-        data = ws.get_all_values()
-        if len(data) > 1:
-            df_eace = pd.DataFrame(data[1:], columns=data[0])
-            mapping = {
-                str(r.iloc[3]).strip().replace('.0', ''): {
-                    'nome': str(r.iloc[4]).strip(),
-                    'uf': str(r.iloc[1]).strip(),
-                    'municipio': str(r.iloc[2]).strip(),
-                    'parceiro': str(r.iloc[9]).strip()
-                }
-                for _, r in df_eace.iterrows()
-                if str(r.iloc[3]).strip()
-            }
-            return mapping
-    except Exception as e:
-        log(f"Aviso ao buscar mapeamento EACE: {e}")
+    # Desativado - agora mapeamos diretamente da planilha OS
     return {}
 
 def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
@@ -340,18 +319,60 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     
     df_ja_aberto = df_ja_aberto.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
     if 'INEP' in df_ja_aberto.columns: df_ja_aberto = df_ja_aberto.drop(columns=['INEP'])
-        
-    if not df_fechar_chamado.empty:
-        df_fechar_chamado = df_fechar_chamado.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
-        if 'INEP' in df_fechar_chamado.columns: df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
+    if status_new in df_ja_aberto.columns:
+        df_ja_aberto['Regra de Abertura (4h Offline)'] = df_ja_aberto[status_new].apply(avaliar_regra_4h)
 
+    # Merge com df_os para capturar Regra, Tempo Offline, Status e Número do Ticket
+    def merge_os_data(df, df_os_abertos):
+        df_merged = pd.merge(
+            df, 
+            df_os_abertos[['INEP', 'Status', 'Prioridade', 'Data da Resolução', 'Nmero de dias em aberto', 'Ticket#']], 
+            left_on='INEP_Extraido', 
+            right_on='INEP', 
+            how='left'
+        )
+        if 'Ticket#' in df_merged.columns:
+            df_merged.rename(columns={'Ticket#': 'Ticket'}, inplace=True)
+        # Converter para float de forma segura
+        df_merged['Dias em Aberto'] = pd.to_numeric(df_merged['Nmero de dias em aberto'], errors='coerce').fillna(0).apply(lambda x: f"{x:.1f}")
+        df_merged.drop(columns=['INEP', 'Nmero de dias em aberto'], inplace=True, errors='ignore')
+        return df_merged
+
+    df_ja_aberto = merge_os_data(df_ja_aberto, df_os_abertos)
+    
+    # Extrair regra e tempo
+    def safe_extract_rule_time(val):
+        val = str(val).strip()
+        if "Offline há" in val:
+            parts = val.split(" - ")
+            if len(parts) >= 2:
+                return parts[0], parts[1].replace("Offline há", "").strip()
+        return val, "-"
+
+    for df in [df_falta_abrir, df_ja_aberto]:
+        if 'Regra de Abertura (4h Offline)' in df.columns:
+            df['Regra'] = df['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[0])
+            df['Tempo Offline'] = df['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[1])
+
+    # Fechar chamado (se INEP estiver na lista online mas possui chamado aberto)
+    mask_fechar = df_os_abertos['INEP'].isin(ineps_online_now)
+    df_fechar_chamado = df_os_abertos[mask_fechar].copy()
+    if 'Ticket#' in df_fechar_chamado.columns:
+        df_fechar_chamado.rename(columns={'Ticket#': 'Ticket'}, inplace=True)
+    
+    # Limpeza e formatação final
     log("4/4 - Enriquecendo relatórios e atualizando Google Sheets...")
-    client = get_gspread_client()
-    escolas_eace_map = get_escolas_eace_map(client)
     cols_remover_omada_set = {'description', 'type', 'model', 'customer number', 'site number', 'device number', 'alert number', 'role', 'roles'}
     
     hora_execucao_br = datetime.now(FUSO_BR).strftime("%d/%m/%Y %H:%M:%S")
     
+    def extrair_uf_cidade_fallback(nome_omada):
+        nome = str(nome_omada).strip()
+        prefix = nome.split('-')[0].strip()
+        if len(prefix) > 2 and prefix[2] == ' ':
+            return prefix[:2], prefix[3:].strip()
+        return "-", prefix
+
     def formatar_e_limpar(df_alvo):
         if not isinstance(df_alvo, pd.DataFrame):
             return df_alvo
@@ -359,11 +380,29 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         df_alvo = df_alvo.drop(columns=cols_drop, errors='ignore')
         
         if 'INEP_Extraido' in df_alvo.columns:
-            inep_series = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
-            df_alvo['Nome da Escola'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('nome', "Não Cadastrado na EACE"))
-            df_alvo['UF'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('uf', "-"))
-            df_alvo['Municipio'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('municipio', "-"))
-            df_alvo['Parceiro'] = inep_series.apply(lambda x: escolas_eace_map.get(x, {}).get('parceiro', "-"))
+            def get_nome(row):
+                inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                nome_eace = escolas_eace_map.get(inep, {}).get('nome', '')
+                return nome_eace if nome_eace else "Não Cadastrado na EACE"
+                
+            def get_uf(row):
+                inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                uf = escolas_eace_map.get(inep, {}).get('uf', '')
+                if not uf or uf == '-':
+                    uf, _ = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
+                return uf
+                
+            def get_mun(row):
+                inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                mun = escolas_eace_map.get(inep, {}).get('municipio', '')
+                if not mun or mun == '-':
+                    _, mun = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
+                return mun
+
+            df_alvo['Nome da Escola'] = df_alvo.apply(get_nome, axis=1)
+            df_alvo['UF'] = df_alvo.apply(get_uf, axis=1)
+            df_alvo['Municipio'] = df_alvo.apply(get_mun, axis=1)
+            df_alvo['Parceiro'] = "-"
             
             cols = list(df_alvo.columns)
             if 'Nome da Escola' in cols:
