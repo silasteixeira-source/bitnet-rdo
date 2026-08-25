@@ -371,10 +371,6 @@ function updateKPIs() {
     setHealthUI(els.health.omadaDot, els.health.omadaBadge, health.omada);
     setHealthUI(els.health.eaceDot, els.health.eaceBadge, health.eace);
     setHealthUI(els.health.sheetsDot, els.health.sheetsBadge, health.sheets);
-    
-    els.countTodos.textContent = list.length;
-    els.countCritico.textContent = criticalCount;
-    els.countAguardar.textContent = waitCount;
 }
 
 // Render Table (Overview)
@@ -529,20 +525,15 @@ function renderIncidents() {
     els.tableIncidents.innerHTML = '';
     const list = state.lastValidData.falta_abrir || [];
     
-    let filtered = list.filter(item => {
+    // First, filter by dropdowns and search (ignoring Tab selection)
+    let baseFiltered = list.filter(item => {
         const rule = item["Regra de Abertura (4h Offline)"] || "";
         const inep = item['INEP_Extraido'] || item['INEP'] || '';
         const name = item['Nome da Escola'] || item['Escola'] || '';
         const nameField = item['NAME'] || item['Nome'] || '';
         
-        // Tab Filter
-        if(state.activeTab === 'critico' && !rule.includes('🚨')) return false;
-        if(state.activeTab === 'aguardar' && !rule.includes('⏳')) return false;
-        
         // Dropdown UF
-        if(state.filterUf) {
-            if(item['UF'] !== state.filterUf) return false;
-        }
+        if(state.filterUf && item['UF'] !== state.filterUf) return false;
         
         // Dropdown Status
         if(state.filterStatus === 'CRÍTICO' && !rule.includes('🚨')) return false;
@@ -554,6 +545,28 @@ function renderIncidents() {
             if(!str.includes(state.searchQuery)) return false;
         }
         
+        return true;
+    });
+
+    // Update Tab Counts based on baseFiltered
+    let cTotal = baseFiltered.length;
+    let cCrit = 0;
+    let cAgua = 0;
+    baseFiltered.forEach(item => {
+        const r = item["Regra de Abertura (4h Offline)"] || "";
+        if (r.includes('🚨')) cCrit++;
+        else if (r.includes('⏳')) cAgua++;
+    });
+
+    if(els.countTodos) els.countTodos.textContent = cTotal;
+    if(els.countCritico) els.countCritico.textContent = cCrit;
+    if(els.countAguardar) els.countAguardar.textContent = cAgua;
+
+    // Now apply active Tab filter
+    let filtered = baseFiltered.filter(item => {
+        const rule = item["Regra de Abertura (4h Offline)"] || "";
+        if(state.activeTab === 'critico' && !rule.includes('🚨')) return false;
+        if(state.activeTab === 'aguardar' && !rule.includes('⏳')) return false;
         return true;
     });
     
