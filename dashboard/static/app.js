@@ -321,22 +321,30 @@ async function fetchData() {
     const API_KEY = window.NOC_API_KEY || 'noc-key-secret';
     
     try {
-        const response = await fetch(`/api/v1/dashboard?tenant=${state.tenant}&t=${Date.now()}`, {
-            headers: { 'X-API-KEY': API_KEY }
-        });
+        const [resCurrent, resOther] = await Promise.all([
+            fetch(`/api/v1/dashboard?tenant=${state.tenant}&t=${Date.now()}`, { headers: { 'X-API-KEY': API_KEY } }),
+            fetch(`/api/v1/dashboard?tenant=${state.tenant === 'bitnet' ? 'st1' : 'bitnet'}&t=${Date.now()}`, { headers: { 'X-API-KEY': API_KEY } })
+        ]);
         
-        if (!response.ok) throw new Error('API Error');
+        if (!resCurrent.ok) throw new Error('API Error (Current Tenant)');
         
-        const data = await response.json();
-        
-        // Se a API retornar vazio, usar mock para validação visual (ajuda em homologação)
-        if(!data || !data.falta_abrir) {
-            console.warn("API retornou sem dados principais. Usando Mock local para testes visuais.");
-            state.data = generateMockData();
-        } else {
-            state.data = data;
+        let data = await resCurrent.json();
+        let otherData = {};
+        if (resOther.ok) {
+            try { otherData = await resOther.json(); } catch(e) {}
         }
         
+        // Se a API retornar vazio, usar mock para validação visual
+        if(!data || !data.falta_abrir) {
+            console.warn("API retornou sem dados principais. Usando Mock local para testes visuais.");
+            data = generateMockData();
+        }
+        
+        const currentOnline = data.stats ? (data.stats.online || 0) : 0;
+        const otherOnline = otherData.stats ? (otherData.stats.online || 0) : 0;
+        data.globalOnline = currentOnline + otherOnline;
+        
+        state.data = data;
         state.lastValidData = state.data;
         state.isError = false;
         
@@ -502,7 +510,9 @@ function updateKPIs() {
     const stats = state.lastValidData.stats || { total: '-', offline: '-', online: '-', ignorados: '-' };
     if (els.kpiTotal) els.kpiTotal.textContent = stats.total;
     if (els.kpiOffline) els.kpiOffline.textContent = stats.offline;
-    if (els.kpiOnline) els.kpiOnline.textContent = stats.online;
+    if (els.kpiOnline) {
+        els.kpiOnline.innerHTML = `${stats.online} <span style="font-size:12px; font-weight:normal; color:var(--text-sec); display:block; margin-top:2px;">Global: ${state.lastValidData.globalOnline || 0}</span>`;
+    }
     if (els.kpiIgnorados) els.kpiIgnorados.textContent = stats.ignorados;
     
     // Atualiza Saúde das Fontes
