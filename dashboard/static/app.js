@@ -41,6 +41,12 @@ const els = {
     syncText: document.getElementById('sync-text'),
     btnRefresh: document.getElementById('btn-refresh'),
     
+    // Novas métricas (Panorama Global)
+    kpiTotal: document.getElementById('kpi-total'),
+    kpiOffline: document.getElementById('kpi-offline'),
+    kpiOnline: document.getElementById('kpi-online'),
+    kpiIgnorados: document.getElementById('kpi-ignorados'),
+    
     // Overview
     kpiCritical: document.getElementById('kpi-critical'),
     kpiWait: document.getElementById('kpi-wait'),
@@ -491,6 +497,13 @@ function updateKPIs() {
     
     els.kpiOs.textContent = osAbertasCount;
     els.kpiRecovery.textContent = recupCount;
+    
+    // Estatísticas Globais do Omada (Total, Offline, Online, Ignorados)
+    const stats = state.lastValidData.stats || { total: '-', offline: '-', online: '-', ignorados: '-' };
+    if (els.kpiTotal) els.kpiTotal.textContent = stats.total;
+    if (els.kpiOffline) els.kpiOffline.textContent = stats.offline;
+    if (els.kpiOnline) els.kpiOnline.textContent = stats.online;
+    if (els.kpiIgnorados) els.kpiIgnorados.textContent = stats.ignorados;
     
     // Atualiza Saúde das Fontes
     const health = state.lastValidData.health || { omada: 'ok', eace: 'ok', sheets: 'ok' };

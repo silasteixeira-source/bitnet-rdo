@@ -88,6 +88,31 @@
         <div class="view-container">
             <!-- View: Visão Geral -->
             <div class="view active" id="view-overview">
+                <!-- Panorama Global (Novas métricas) -->
+                <div class="kpi-grid" style="margin-bottom: 24px;">
+                    <div class="kpi-card" style="border-top: 3px solid #06b6d4;">
+                        <span class="kpi-title">TOTAL REGISTROS</span>
+                        <span class="kpi-value" id="kpi-total">-</span>
+                        <span class="kpi-desc">Válidos na planilha RDO</span>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-critical);">
+                        <span class="kpi-title">OFFLINE</span>
+                        <span class="kpi-value" id="kpi-offline">-</span>
+                        <span class="kpi-desc">Atualmente caídos</span>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid var(--status-success);">
+                        <span class="kpi-title">ONLINE</span>
+                        <span class="kpi-value" id="kpi-online">-</span>
+                        <span class="kpi-desc">Operantes neste momento</span>
+                    </div>
+                    <div class="kpi-card" style="border-top: 3px solid #64748b;">
+                        <span class="kpi-title">IGNORADOS</span>
+                        <span class="kpi-value" id="kpi-ignorados">-</span>
+                        <span class="kpi-desc">Dispositivos fora do RDO</span>
+                    </div>
+                </div>
+                
+                <!-- KPIs Operacionais -->
                 <div class="kpi-grid">
                     <div class="kpi-card" onclick="navigateFromKpi('critical')" style="border-top: 3px solid var(--status-critical);" title="Clique para ver incidentes críticos">
                         <span class="kpi-title">Incidentes Críticos</span>

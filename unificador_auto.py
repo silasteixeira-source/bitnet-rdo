@@ -545,12 +545,28 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     os.makedirs(snapshot_dir, exist_ok=True)
     snapshot_path = os.path.join(snapshot_dir, f"{tenant}.json")
     
+    # Calculando estatísticas globais
+    if 'INEP_Extraido' not in df_new.columns:
+        df_new['INEP_Extraido'] = df_new[name_new].astype(str).str.extract(r'(\d{6,})')[0]
+    mask_df_new_rdo = df_new['INEP_Extraido'].isin(ineps_rdo)
+    df_new_validos = df_new[mask_df_new_rdo]
+    total_registros = len(df_new_validos)
+    total_offline = len(df_validos)
+    total_online = total_registros - total_offline
+    total_ignorados = len(df_new) - total_registros
+
     snapshot_data = {
         "falta_abrir": df_falta_abrir.to_dict(orient='records'),
         "abertos": df_ja_aberto.to_dict(orient='records'),
         "fechar": df_fechar_chamado.to_dict(orient='records'),
         "updated_at": hora_execucao_br,
-        "health": health_status
+        "health": health_status,
+        "stats": {
+            "total": int(total_registros),
+            "offline": int(total_offline),
+            "online": int(total_online),
+            "ignorados": int(total_ignorados)
+        }
     }
     
     import json
