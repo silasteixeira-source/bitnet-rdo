@@ -858,6 +858,9 @@ function renderOs() {
         const tdInep = document.createElement('td');
         tdInep.textContent = inep;
         
+        const tdCausa = document.createElement('td');
+        tdCausa.textContent = item['Causa'] || '-';
+        
         const tdAcao = document.createElement('td');
         const btn = document.createElement('button');
         btn.className = 'btn';
@@ -870,6 +873,7 @@ function renderOs() {
         tr.appendChild(tdEscola);
         tr.appendChild(tdLoc);
         tr.appendChild(tdInep);
+        tr.appendChild(tdCausa);
         tr.appendChild(tdAcao);
         
         els.tableOs.appendChild(tr);
@@ -925,6 +929,9 @@ function renderRecoveries() {
         const tdInep = document.createElement('td');
         tdInep.textContent = inep;
         
+        const tdCausa = document.createElement('td');
+        tdCausa.textContent = item['Causa'] || '-';
+        
         const tdAcao = document.createElement('td');
         const btn = document.createElement('button');
         btn.className = 'btn';
@@ -937,6 +944,7 @@ function renderRecoveries() {
         tr.appendChild(tdEscola);
         tr.appendChild(tdLoc);
         tr.appendChild(tdInep);
+        tr.appendChild(tdCausa);
         tr.appendChild(tdAcao);
         
         els.tableRecoveries.appendChild(tr);

@@ -294,7 +294,19 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 # Enriquecendo OS
                 df_os_abertos_unico = df_os_abertos.drop_duplicates(subset=['INEP'], keep='first')
                 df_os_abertos_unico['INEP'] = df_os_abertos_unico['INEP'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
-                colunas_merge = [c for c in ['INEP', 'Ticket#', 'Status', 'Atribuído a'] if c in df_os_abertos_unico.columns]
+                
+                causa_cols = [c for c in df_os_abertos_unico.columns if 'causa' in str(c).lower()]
+                if causa_cols:
+                    def get_causa(row):
+                        for c in causa_cols:
+                            if pd.notna(row[c]) and str(row[c]).strip() != '':
+                                return str(row[c]).strip()
+                        return '-'
+                    df_os_abertos_unico['Causa'] = df_os_abertos_unico.apply(get_causa, axis=1)
+                else:
+                    df_os_abertos_unico['Causa'] = '-'
+
+                colunas_merge = [c for c in ['INEP', 'Ticket#', 'Status', 'Atribuído a', 'Causa'] if c in df_os_abertos_unico.columns]
                 
                 df_ja_aberto = df_ja_aberto.merge(df_os_abertos_unico[colunas_merge], left_on='INEP_Extraido', right_on='INEP', how='left')
                 if 'INEP' in df_ja_aberto.columns: df_ja_aberto = df_ja_aberto.drop(columns=['INEP'])
