@@ -633,18 +633,37 @@ function renderOverview() {
         els.tableOverview.appendChild(tr);
     });
 
-    renderActivityMock();
+    renderRecentActivity();
 }
 
-function renderActivityMock() {
+function renderRecentActivity() {
+    if(!els.recentActivityList) return;
     els.recentActivityList.innerHTML = '';
-    const mocks = [
-        { time: '11:24', text: 'Escola Municipal Ceará reportada offline no Omada', crit: false },
-        { time: '11:15', text: 'INEP 3522201 atingiu SLA de 4h (Crítico)', crit: true },
-        { time: '11:00', text: 'Sincronização com Google Sheets finalizada (30ms)', crit: false },
-        { time: '10:42', text: 'OS 20260012 fechada no sistema EACE', crit: false },
-    ];
-    mocks.forEach(m => {
+    
+    const acts = [];
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    acts.push({ time: timeStr, text: `Sincronização de dados concluída.`, crit: false });
+    
+    if (state.lastValidData) {
+        const recup = state.lastValidData.fechar || [];
+        if (recup.length > 0) {
+            acts.push({ time: timeStr, text: `${recup.length} escolas reportadas ONLINE no Omada (Aguardando fechamento EACE).`, crit: false });
+        }
+        
+        const falta = state.lastValidData.falta_abrir || [];
+        const criticos = falta.filter(i => (i["Regra de Abertura (4h Offline)"] || "").includes('🚨'));
+        if (criticos.length > 0) {
+            acts.push({ time: timeStr, text: `${criticos.length} escolas atingiram o SLA de 4h (Fila Crítica).`, crit: true });
+            criticos.slice(0, 2).forEach(c => {
+                const inep = c['INEP_Extraido'] || c['INEP'] || '-';
+                acts.push({ time: timeStr, text: `INEP ${inep} extrapolou tempo limite (4h).`, crit: true });
+            });
+        }
+    }
+    
+    acts.forEach(m => {
         const div = document.createElement('div');
         div.className = 'event-item';
         
