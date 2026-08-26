@@ -17,26 +17,7 @@ def authenticate_gspread():
         return gspread.authorize(creds)
     return None
 
-@st.cache_data(ttl=3600)
-def get_escolas_eace_map():
-    client = authenticate_gspread()
-    if not client:
-        return {}
-    try:
-        sh = client.open_by_key('1Onw1vaSO2SIQ_OfAoDPI6ycnXWTAZ2ijhtujAOhI9UM')
-        ws = sh.worksheet('EACE')
-        data = ws.get_all_values()
-        if len(data) > 1:
-            df_eace = pd.DataFrame(data[1:], columns=data[0])
-            mapping = {
-                str(r.iloc[3]).strip().replace('.0', ''): str(r.iloc[4]).strip()
-                for _, r in df_eace.iterrows()
-                if str(r.iloc[3]).strip()
-            }
-            return mapping
-    except Exception as e:
-        st.warning(f"Aviso: Não foi possível carregar mapeamento de escolas da EACE ({e})")
-    return {}
+
 
 def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
     sheet = client.open_by_url(spreadsheet_url)
@@ -190,6 +171,18 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 if not df_recuperadas.empty:
                     df_recuperadas['INEP_Extraido'] = df_recuperadas[name_old].astype(str).str.extract(r'(\d{6,})')[0]
 
+                # --- FILTRO ANTI-FALSO-OFFLINE E DEDUPLICAÇÃO DE INEPs ---
+                df_online_tmp = df_new[~df_new[status_new].astype(str).str.upper().str.contains('OFFLINE', na=False)].copy()
+                df_online_tmp['INEP_Extraido'] = df_online_tmp[name_new].astype(str).str.extract(r'(\d{6,})')[0]
+                ineps_online_now = set(df_online_tmp['INEP_Extraido'].dropna().astype(str).str.strip())
+                
+                inep_series_off = df_offline['INEP_Extraido'].astype(str).str.strip()
+                removidos_online = df_offline[inep_series_off.isin(ineps_online_now)]
+                if not removidos_online.empty:
+                    st.warning(f"⚡ Filtro Anti-Falso-Offline: {len(removidos_online)} controladoras offline ignoradas porque o INEP já está ONLINE no Omada (ex: {list(removidos_online['INEP_Extraido'].unique())[:5]}).")
+                df_offline = df_offline[~inep_series_off.isin(ineps_online_now)].copy()
+                df_offline = df_offline.drop_duplicates(subset=['INEP_Extraido'], keep='first').copy()
+
             with st.spinner("2/3 - Validando INEPs com RDO..."):
                 # --- PASSO 2: RDO ---
                 if isinstance(rdo_file, str) and rdo_file.startswith("http"):
@@ -237,8 +230,20 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
             with st.spinner("3/3 - Cruzando com Controle de OS..."):
                 # --- PASSO 3: CONTROLE DE OS ---
                 df_os = pd.read_excel(os_file)
+                
+                os_map = {}
+                for _, row in df_os.iterrows():
+                    inep = str(row.get('INEP', '')).strip().replace('.0', '')
+                    if inep and inep != 'nan':
+                        uf = row.get('UF', row.get('Estado', '-'))
+                        mun = row.get('Municipio', row.get('Cidade', '-'))
+                        escola = row.get('Escola', row.get('Nome', row.get('Cliente', '-')))
+                        os_map[inep] = {'Escola': escola, 'UF': uf, 'Municipio': mun}
+
                 df_os_abertos = df_os[~df_os['Status'].astype(str).str.upper().str.contains('CONCLUÍDO|CONCLUIDO|CANCELADO|FECHADO', regex=True, na=False)].copy()
-                ineps_com_chamado = df_os_abertos['INEP'].dropna().astype(str).str.strip().str.replace(r'\.0$', '', regex=True).tolist()
+                if 'INEP' in df_os_abertos.columns:
+                    df_os_abertos['INEP'] = df_os_abertos['INEP'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+                ineps_com_chamado = df_os_abertos['INEP'].dropna().tolist()
                 
                 mask_tem_chamado = df_validos['INEP_Extraido'].isin(ineps_com_chamado)
                 df_falta_abrir = df_validos[~mask_tem_chamado].copy()
@@ -283,6 +288,8 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 df_online_new['INEP_Extraido'] = df_online_new[name_new].astype(str).str.extract(r'(\d{6,})')[0]
                 mask_online_com_chamado = df_online_new['INEP_Extraido'].isin(ineps_com_chamado)
                 df_fechar_chamado = df_online_new[mask_online_com_chamado].copy()
+                if not df_fechar_chamado.empty and 'INEP_Extraido' not in df_fechar_chamado.columns:
+                    pass # df_online_new tem INEP_Extraido
                     
                 # Enriquecendo OS
                 df_os_abertos_unico = df_os_abertos.drop_duplicates(subset=['INEP'], keep='first')
@@ -297,23 +304,63 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                     if 'INEP' in df_fechar_chamado.columns: df_fechar_chamado = df_fechar_chamado.drop(columns=['INEP'])
 
                 # Enriquecimento EACE (Nome da Escola), Limpeza de Colunas e Horário de Brasília UTC-3
-                escolas_eace_map = get_escolas_eace_map()
                 cols_remover_omada_set = {'description', 'type', 'model', 'customer number', 'site number', 'device number', 'alert number', 'role', 'roles'}
                 
                 from datetime import datetime, timezone, timedelta
                 fuso_br = timezone(timedelta(hours=-3))
                 hora_execucao_br = datetime.now(fuso_br).strftime("%d/%m/%Y %H:%M:%S")
                 
+                def extrair_uf_cidade_fallback(nome_omada):
+                    nome = str(nome_omada).strip()
+                    prefix = nome.split('-')[0].strip()
+                    if len(prefix) > 2 and prefix[2] == ' ':
+                        return prefix[:2], prefix[3:].strip()
+                    return "-", prefix
+                
+                def safe_extract_rule_time(val):
+                    val = str(val).strip()
+                    if "Offline há" in val:
+                        parts = val.split(" - ")
+                        if len(parts) >= 2:
+                            return parts[0], parts[1].replace("Offline há", "").strip()
+                    return val, "-"
+
+                for df_ in [df_falta_abrir, df_ja_aberto]:
+                    if 'Regra de Abertura (4h Offline)' in df_.columns:
+                        df_['Regra'] = df_['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[0])
+                        df_['Tempo Offline'] = df_['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[1])
+
                 def formatar_e_limpar(df_alvo):
                     if not isinstance(df_alvo, pd.DataFrame):
                         return df_alvo
-                    # 1. Remover colunas extras do Omada (insensível a maiúsculas/minúsculas e espaços)
                     cols_drop = [c for c in df_alvo.columns if str(c).strip().lower() in cols_remover_omada_set]
                     df_alvo = df_alvo.drop(columns=cols_drop, errors='ignore')
                     
-                    # 2. Inserir Nome da Escola via EACE
                     if 'INEP_Extraido' in df_alvo.columns:
-                        df_alvo['Nome da Escola'] = df_alvo['INEP_Extraido'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True).map(escolas_eace_map).fillna("Não Cadastrado na EACE")
+                        def get_nome(row):
+                            inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                            nome_eace = os_map.get(inep, {}).get('Escola', '')
+                            return nome_eace if nome_eace else "Não Cadastrado na EACE"
+                            
+                        def get_uf(row):
+                            inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                            uf = os_map.get(inep, {}).get('UF', '')
+                            if not uf or uf == '-':
+                                uf, _ = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
+                            return uf
+                            
+                        def get_mun(row):
+                            inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                            mun = os_map.get(inep, {}).get('Municipio', '')
+                            if not mun or mun == '-':
+                                _, mun = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
+                            return mun
+
+                        df_alvo['Nome da Escola'] = df_alvo.apply(get_nome, axis=1)
+                        df_alvo['UF'] = df_alvo.apply(get_uf, axis=1)
+                        df_alvo['Municipio'] = df_alvo.apply(get_mun, axis=1)
+                        df_alvo['Parceiro'] = "-"
+                        
                         cols = list(df_alvo.columns)
                         if 'Nome da Escola' in cols:
                             cols.remove('Nome da Escola')
@@ -321,7 +368,6 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                             cols.insert(pos, 'Nome da Escola')
                             df_alvo = df_alvo[cols]
                             
-                    # 3. Adicionar coluna Atualizado Em no final
                     df_alvo['Atualizado Em'] = hora_execucao_br
                     return df_alvo
 
@@ -329,6 +375,13 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 df_ja_aberto = formatar_e_limpar(df_ja_aberto)
                 df_fechar_chamado = formatar_e_limpar(df_fechar_chamado)
                 df_ignorados = formatar_e_limpar(df_ignorados)
+                
+                if 'Nome da Escola' in df_falta_abrir.columns:
+                    mask_nao_cad = df_falta_abrir['Nome da Escola'] == "Não Cadastrado na EACE"
+                    df_nao_cadastrado = df_falta_abrir[mask_nao_cad].copy()
+                    df_falta_abrir = df_falta_abrir[~mask_nao_cad].copy()
+                else:
+                    df_nao_cadastrado = pd.DataFrame()
 
             st.success(f"✅ Processamento Concluído em {hora_execucao_br} (Horário de Brasília)!")
             st.info(f"🕒 A coluna **'Atualizado Em'** (`{hora_execucao_br}`) foi anexada a todos os relatórios e abas para indicar o momento exato em que o fluxo foi rodado.")
@@ -337,11 +390,12 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
             # --- RESULTADOS ---
             st.subheader("📊 Resultados do Fluxo Unificado")
             
-            tab1, tab2, tab3, tab4 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
                 f"🚨 Falta Abrir Chamado ({len(df_falta_abrir)})", 
                 f"🎫 Já Possui Chamado ({len(df_ja_aberto)})",
                 f"🟢 Fechar Chamado ({len(df_fechar_chamado)})",
-                f"🚫 Ignorados - Fora RDO ({len(df_ignorados)})"
+                f"🚫 Ignorados - Fora RDO ({len(df_ignorados)})",
+                f"❓ Não Cadastrados EACE ({len(df_nao_cadastrado)})"
             ])
             
             with tab1:
@@ -356,6 +410,9 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
             with tab4:
                 st.markdown("Estão offline, mas NÃO constam no RDO.")
                 st.dataframe(df_ignorados if not df_ignorados.empty else pd.DataFrame(columns=['Tudo certo']), use_container_width=True)
+            with tab5:
+                st.markdown("Não localizados na planilha de Controle de OS.")
+                st.dataframe(df_nao_cadastrado if not df_nao_cadastrado.empty else pd.DataFrame(columns=['Tudo certo']), use_container_width=True)
             
             st.divider()
             st.subheader("📥 Exportar")
@@ -365,6 +422,7 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 if not df_ja_aberto.empty: df_ja_aberto.to_excel(writer, index=False, sheet_name='Chamados_Abertos')
                 if not df_fechar_chamado.empty: df_fechar_chamado.to_excel(writer, index=False, sheet_name='Fechar_Chamado_Recup')
                 if not df_ignorados.empty: df_ignorados.to_excel(writer, index=False, sheet_name='Ignorados_Fora_do_RDO')
+                if not df_nao_cadastrado.empty: df_nao_cadastrado.to_excel(writer, index=False, sheet_name='Nao_Cadastrados_EACE')
             
             st.download_button(
                 label="📥 Baixar Relatório Completo (Excel)",
@@ -381,10 +439,12 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 if client:
                     with st.spinner("☁️ Sincronizando dados com o Google Sheets..."):
                         try:
-                            update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
-                            update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
-                            update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
-                            update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
+                            import unificador_auto as u_auto
+                            u_auto.update_gsheet_tab(client, gsheet_url, "Falta_Abrir_Chamado", df_falta_abrir)
+                            u_auto.update_gsheet_tab(client, gsheet_url, "Chamados_Abertos", df_ja_aberto)
+                            u_auto.update_gsheet_tab(client, gsheet_url, "Fechar_Chamado_Recup", df_fechar_chamado)
+                            u_auto.update_gsheet_tab(client, gsheet_url, "Nao_Cadastrados_EACE", df_nao_cadastrado)
+                            u_auto.update_gsheet_tab(client, gsheet_url, "Ignorados_Fora_do_RDO", df_ignorados)
                             
                             # Sincronizar planilha completa do Omada no link dedicado do Google Sheets
                             try:
