@@ -394,6 +394,8 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     # Fechar chamado (se INEP estiver na lista online mas possui chamado aberto)
     mask_fechar = df_os_abertos['INEP'].isin(ineps_online_now)
     df_fechar_chamado = df_os_abertos[mask_fechar].copy()
+    if not df_fechar_chamado.empty and 'INEP' in df_fechar_chamado.columns:
+        df_fechar_chamado['INEP_Extraido'] = df_fechar_chamado['INEP']
     if 'Ticket#' in df_fechar_chamado.columns:
         df_fechar_chamado.rename(columns={'Ticket#': 'Ticket'}, inplace=True)
     
