@@ -384,7 +384,7 @@ async function fetchData() {
         const ts = state.data.timestamp ? new Date(state.data.timestamp).getTime() : Date.now();
         const diffMin = (Date.now() - ts) / 60000;
         
-        if (diffMin > 20) {
+        if (diffMin > 15) {
             setSyncState('warning', `Dados Atrasados (${Math.floor(diffMin)}m)`);
             
             // Lógica de alerta para automação parada
