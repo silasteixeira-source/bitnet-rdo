@@ -58,20 +58,33 @@ def get_escolas_eace_map(client):
     # Desativado - agora mapeamos diretamente da planilha OS
     return {}
 
-def update_gsheet_tab(client, spreadsheet_url, sheet_name, df):
-    """Atualiza ou cria a aba especificada no Google Sheets."""
-    sheet = client.open_by_url(spreadsheet_url)
-    try:
-        worksheet = sheet.worksheet(sheet_name)
-    except gspread.exceptions.WorksheetNotFound:
-        worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
-    
-    worksheet.clear()
-    if not df.empty:
-        df_str = df.fillna("").astype(str)
-        worksheet.update([df_str.columns.values.tolist()] + df_str.values.tolist())
-    else:
-        worksheet.update([["Nenhum dado encontrado"]])
+def update_gsheet_tab(client, spreadsheet_url, sheet_name, df, max_retries=3):
+    """Atualiza ou cria a aba especificada no Google Sheets, com tentativas em caso de erro de cota."""
+    for attempt in range(max_retries):
+        try:
+            sheet = client.open_by_url(spreadsheet_url)
+            try:
+                worksheet = sheet.worksheet(sheet_name)
+            except gspread.exceptions.WorksheetNotFound:
+                worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
+            
+            worksheet.clear()
+            if not df.empty:
+                df_str = df.fillna("").astype(str)
+                worksheet.update([df_str.columns.values.tolist()] + df_str.values.tolist())
+            else:
+                worksheet.update([["Nenhum dado encontrado"]])
+                
+            time.sleep(1.5)  # Pequena pausa para evitar Rate Limit
+            return
+        except Exception as e:
+            if "429" in str(e) or "Quota" in str(e):
+                if attempt < max_retries - 1:
+                    log(f"⚠️ Rate limit atingido na aba {sheet_name}. Tentando novamente em {2 ** attempt}s...")
+                    time.sleep(2 ** attempt)
+                    continue
+            log(f"❌ Falha definitiva ao atualizar aba {sheet_name}: {e}")
+            raise e
 
 def sincronizar_omada_google(client, url_omada, df_omada):
     """Atualiza a planilha completa do Omada no Google Sheets."""
