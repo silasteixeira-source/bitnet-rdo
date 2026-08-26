@@ -9,7 +9,7 @@ const state = {
     searchQuery: '',
     currentFilteredList: [],
     previousRecoveredIneps: new Set(),
-    alertsEnabled: false,
+    alertsEnabled: localStorage.getItem('nocAlertsEnabled') === 'true',
     hasAlertedStaleData: false,
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
     currentView: 'view-overview'
@@ -85,6 +85,14 @@ const els = {
 
 // Initialization
 function init() {
+    if (state.alertsEnabled) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            if (els.btnEnableAlerts) els.btnEnableAlerts.style.display = 'none';
+        } else {
+            state.alertsEnabled = false;
+            localStorage.setItem('nocAlertsEnabled', 'false');
+        }
+    }
     setupEventListeners();
     fetchData();
     setInterval(fetchData, 30000); // 30s auto-refresh
@@ -198,13 +206,14 @@ function setupEventListeners() {
                 Notification.requestPermission().then(permission => {
                     if (permission === "granted") {
                         state.alertsEnabled = true;
+                        localStorage.setItem('nocAlertsEnabled', 'true');
                         els.btnEnableAlerts.style.display = 'none';
                         // Play silent sound to unlock AudioContext on browsers
                         try {
                             const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
                             silentAudio.play().catch(()=>{});
                         } catch(e) {}
-                        new Notification("Alertas NOC Ativados ✅", { body: "Você será notificado quando houver novas recuperações." });
+                        new Notification("Alertas NOC Ativados ✅", { body: "As notificações ficarão ativas permanentemente neste navegador." });
                     } else {
                         alert("Você precisa permitir notificações no navegador para receber alertas.");
                     }
