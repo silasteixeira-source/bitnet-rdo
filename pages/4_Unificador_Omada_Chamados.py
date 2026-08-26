@@ -295,13 +295,18 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                 df_os_abertos_unico = df_os_abertos.drop_duplicates(subset=['INEP'], keep='first')
                 df_os_abertos_unico['INEP'] = df_os_abertos_unico['INEP'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
                 
-                causa_cols = [c for c in df_os_abertos_unico.columns if 'causa' in str(c).lower()]
+                causa_cols = sorted([c for c in df_os_abertos_unico.columns if 'causa' in str(c).lower()])
                 if causa_cols:
                     def get_causa(row):
-                        for c in causa_cols:
-                            if pd.notna(row[c]) and str(row[c]).strip() != '':
-                                return str(row[c]).strip()
-                        return '-'
+                        valores = [str(row[c]).strip() for c in causa_cols if pd.notna(row[c]) and str(row[c]).strip() != '']
+                        if not valores:
+                            return '-'
+                        if len(valores) == 1:
+                            return valores[0]
+                        elif len(valores) == 2:
+                            return f"{valores[0]} - {valores[1]}"
+                        else:
+                            return f"{valores[0]} - " + " ".join(valores[1:])
                     df_os_abertos_unico['Causa'] = df_os_abertos_unico.apply(get_causa, axis=1)
                 else:
                     df_os_abertos_unico['Causa'] = '-'
