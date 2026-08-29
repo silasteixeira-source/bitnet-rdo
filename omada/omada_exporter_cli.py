@@ -1197,6 +1197,7 @@ def run_cli_mode(args):
 
     try:
         while True:
+            cycle_start = time.time()
             print("\n" + "="*40)
             print(f"[{datetime.now().strftime('%H:%M:%S')}] INICIANDO CICLO GLOBAL OMADA")
             print("="*40)
@@ -1208,8 +1209,10 @@ def run_cli_mode(args):
                 print("--- Processando Omada ST1 ---")
                 exporter_st1.run_once(skip_logs=False)
                 
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo concluído. Aguardando {interval}s...")
-            time.sleep(interval)
+            elapsed = time.time() - cycle_start
+            sleep_time = max(0, interval - elapsed)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo concluído em {elapsed:.1f}s. Aguardando {sleep_time:.1f}s...")
+            time.sleep(sleep_time)
             
     except (KeyboardInterrupt, SystemExit):
         print("\nInterrupção recebida. Parando exportador CLI...")

@@ -400,6 +400,7 @@ def main():
         print("[EACE Exporter] Aguardando 180s (3 min) de delay inicial para que o Omada Exporter conclua na VPS...")
         time.sleep(180)
         while True:
+            cycle_start = time.time()
             print("\n[EACE Exporter] === Iniciando Processamento EACE -> BITNET ===")
             exporter_bitnet.run()
             
@@ -407,8 +408,10 @@ def main():
                 print("\n[EACE Exporter] === Iniciando Processamento EACE -> ST1 ===")
                 exporter_st1.run()
                 
-            print(f"\n[EACE Exporter] Aguardando {intervalo}s para o próximo ciclo global...")
-            time.sleep(intervalo)
+            elapsed = time.time() - cycle_start
+            sleep_time = max(0, intervalo - elapsed)
+            print(f"\n[EACE Exporter] Ciclo levou {elapsed:.1f}s. Aguardando {sleep_time:.1f}s para o próximo ciclo global...")
+            time.sleep(sleep_time)
     else:
         print("\n[EACE Exporter] === Iniciando Processamento EACE -> BITNET ===")
         exporter_bitnet.run()
