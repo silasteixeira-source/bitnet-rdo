@@ -1329,7 +1329,7 @@ function renderAgentsList() {
         const btnDelete = div.querySelector('.agent-delete-btn');
         btnDelete.addEventListener('click', async () => {
             try {
-                const res = await fetch(\`/api/v1/agents/\${agent.id}\`, {
+                const res = await fetch(`/api/v1/agents/${agent.id}`, {
                     method: 'DELETE',
                     headers: { 'x-api-key': window.NOC_API_KEY }
                 });
