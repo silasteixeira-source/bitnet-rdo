@@ -557,8 +557,8 @@ function populateUfFilter() {
 }
 
 function getUfFromOsItem(item) {
-    if (item['UF'] && item['UF'] !== "-") return item['UF'].trim();
-    const nameField = item['NAME'] || item['Nome'] || '';
+    if (item['UF'] && item['UF'] !== "-") return String(item['UF']).trim();
+    const nameField = String(item['NAME'] || item['Nome'] || '');
     if (nameField.includes('/')) {
         const parts = nameField.split('/');
         return parts[parts.length - 1].split('-')[0].trim();
@@ -568,7 +568,7 @@ function getUfFromOsItem(item) {
 
 function getStatusFromOsItem(item) {
     const s = item['Status'] || item['Status_y'] || item['Status_x'] || 'Em Análise';
-    return s.trim();
+    return String(s).trim();
 }
 
 function populateFiltersOs() {
