@@ -261,6 +261,15 @@
                     </select>
                     <input type="text" class="filter-input" id="search-os" placeholder="Buscar INEP, Escola, Ticket..." style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); padding:8px 12px; border-radius:4px; width:220px;">
                     <div style="flex-grow:1"></div>
+                    <button class="btn" id="btn-manage-agents" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-main); margin-right: 8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        Gerenciar Agentes
+                    </button>
                     <button class="btn" id="btn-export-excel-os" style="background: var(--status-warning); border-color: var(--status-warning); color: #fff;">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -274,7 +283,7 @@
                     <table id="table-os">
                         <thead>
                             <tr>
-                                <th>Ticket</th>
+                                <th>Agente</th>
                                 <th>Status</th>
                                 <th>Escola</th>
                                 <th>Localidade</th>
@@ -394,6 +403,27 @@
             </div>
         </div>
     </aside>
+
+    <!-- Modal de Gerenciamento de Agentes -->
+    <div id="modal-agents" class="drawer-overlay" style="display:none; align-items:center; justify-content:center; z-index:2000;">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; width: 400px; padding: var(--sp-6); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--sp-4);">
+                <h3 style="margin:0;">Gerenciar Agentes</h3>
+                <button id="btn-close-agents" style="background:transparent; border:none; color:var(--text-sec); cursor:pointer;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <div style="display:flex; gap:8px; margin-bottom:var(--sp-4);">
+                <input type="text" id="input-new-agent" placeholder="Nome do Agente" style="flex-grow:1; background:var(--bg-main); border:1px solid var(--border-color); color:var(--text-main); padding:8px; border-radius:4px;">
+                <button id="btn-add-agent" class="btn btn-primary">Adicionar</button>
+            </div>
+
+            <div id="list-agents" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px;">
+                <!-- Preenchido via JS -->
+            </div>
+        </div>
+    </div>
 
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";

@@ -16,7 +16,9 @@ const state = {
     alertsEnabled: localStorage.getItem('nocAlertsEnabled') === 'true',
     hasAlertedStaleData: false,
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
-    currentView: 'view-overview'
+    currentView: 'view-overview',
+    agents: [],
+    assignments: {}
 };
 
 // DOM Elements
@@ -94,11 +96,19 @@ const els = {
     drawerRule: document.getElementById('drawer-rule'),
     drawerPartner: document.getElementById('drawer-partner'),
     drawerCad: document.getElementById('drawer-cad'),
-    drawerTimeline: document.getElementById('drawer-timeline')
+    drawerTimeline: document.getElementById('drawer-timeline'),
+    
+    // Agentes
+    btnManageAgents: document.getElementById('btn-manage-agents'),
+    modalAgents: document.getElementById('modal-agents'),
+    btnCloseAgents: document.getElementById('btn-close-agents'),
+    inputNewAgent: document.getElementById('input-new-agent'),
+    btnAddAgent: document.getElementById('btn-add-agent'),
+    listAgents: document.getElementById('list-agents')
 };
 
 // Initialization
-function init() {
+async function init() {
     if (state.alertsEnabled) {
         if ("Notification" in window && Notification.permission === "granted") {
             if (els.btnEnableAlerts) els.btnEnableAlerts.style.display = 'none';
@@ -107,7 +117,10 @@ function init() {
             localStorage.setItem('nocAlertsEnabled', 'false');
         }
     }
+    await fetchAgents();
+    await fetchAssignments();
     setupEventListeners();
+    setupAgentsListeners();
     fetchData();
     setInterval(fetchData, 30000); // 30s auto-refresh
 }
@@ -289,8 +302,12 @@ function setupEventListeners() {
                     localidade = nameField || '-';
                 }
 
+                const inep = item['INEP_Extraido'] || item['INEP'] || '';
+                const agentId = state.assignments[inep];
+                const agentName = agentId ? (state.agents.find(a => a.id === agentId)?.name || 'Sem Agente') : 'Sem Agente';
+
                 return {
-                    "Ticket": item['Ticket#'] || 'S/N',
+                    "Agente": agentName,
                     "Status": getStatusFromOsItem(item),
                     "Escola": item['Nome da Escola'] || item['Escola'] || '',
                     "Localidade": localidade,
@@ -1022,7 +1039,6 @@ function renderOs() {
     list.forEach(item => {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
-        const ticket = item['Ticket#'] || 'S/N';
         const status = getStatusFromOsItem(item);
         
         const nameField = item['NAME'] || item['Nome'] || '';
@@ -1037,11 +1053,29 @@ function renderOs() {
         
         const tr = document.createElement('tr');
         
-        const tdTicket = document.createElement('td');
-        const badgeTicket = document.createElement('span');
-        badgeTicket.className = 'badge badge-info';
-        badgeTicket.textContent = ticket;
-        tdTicket.appendChild(badgeTicket);
+        const tdAgente = document.createElement('td');
+        const selAgente = document.createElement('select');
+        selAgente.className = 'agent-select';
+        
+        const optDefault = document.createElement('option');
+        optDefault.value = '';
+        optDefault.textContent = 'Sem Agente';
+        selAgente.appendChild(optDefault);
+        
+        state.agents.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            selAgente.appendChild(opt);
+        });
+        
+        selAgente.value = state.assignments[inep] || '';
+        
+        selAgente.addEventListener('change', (e) => {
+            saveAssignment(inep, e.target.value);
+        });
+        
+        tdAgente.appendChild(selAgente);
         
         const tdStatus = document.createElement('td');
         tdStatus.textContent = status;
@@ -1062,10 +1096,10 @@ function renderOs() {
         const btn = document.createElement('button');
         btn.className = 'btn';
         btn.textContent = 'Copiar Resumo';
-        btn.onclick = () => navigator.clipboard.writeText(`Ticket: ${ticket} - INEP: ${inep}`);
+        btn.onclick = () => navigator.clipboard.writeText(`OS INEP: ${inep} - ${name} - ${status}`);
         tdAcao.appendChild(btn);
         
-        tr.appendChild(tdTicket);
+        tr.appendChild(tdAgente);
         tr.appendChild(tdStatus);
         tr.appendChild(tdEscola);
         tr.appendChild(tdLoc);
@@ -1214,6 +1248,96 @@ function generateMockData() {
             { Escola: "ESCOLA MUNICIPAL ALDA CARVALHO", INEP: "33011122", Localidade: "Rio de Janeiro - RJ", "Offline Since": "há 0h30m", Uptime: "Uptime: 2026-08-25 10:50", "Regra de Abertura (4h Offline)": "⏳ AGUARDAR (<4h) - Offline há 0h30m", IP: "10.10.10.1" }
         ]
     };
+}
+
+// API Agentes
+async function fetchAgents() {
+    try {
+        const res = await fetch('/api/v1/agents', { headers: { 'x-api-key': window.NOC_API_KEY } });
+        if (res.ok) {
+            state.agents = await res.json();
+            renderAgentsList();
+        }
+    } catch(e) { console.error("Erro ao carregar agentes", e); }
+}
+
+async function fetchAssignments() {
+    try {
+        const res = await fetch('/api/v1/assignments', { headers: { 'x-api-key': window.NOC_API_KEY } });
+        if (res.ok) state.assignments = await res.json();
+    } catch(e) { console.error("Erro ao carregar atribuições", e); }
+}
+
+async function saveAssignment(inep, agentId) {
+    try {
+        await fetch('/api/v1/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+            body: JSON.stringify({ inep: inep, agent_id: agentId })
+        });
+        state.assignments[inep] = agentId;
+    } catch(e) { console.error("Erro ao salvar atribuição", e); }
+}
+
+function setupAgentsListeners() {
+    if(!els.btnManageAgents) return;
+    
+    els.btnManageAgents.addEventListener('click', () => {
+        els.modalAgents.style.display = 'flex';
+        renderAgentsList();
+    });
+    
+    els.btnCloseAgents.addEventListener('click', () => {
+        els.modalAgents.style.display = 'none';
+        renderOs(); // re-render table to reflect agents
+    });
+    
+    els.btnAddAgent.addEventListener('click', async () => {
+        const name = els.inputNewAgent.value.trim();
+        if(!name) return;
+        try {
+            const res = await fetch('/api/v1/agents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+                body: JSON.stringify({ name })
+            });
+            if(res.ok) {
+                els.inputNewAgent.value = '';
+                await fetchAgents();
+            }
+        } catch(e) { console.error("Erro ao adicionar agente", e); }
+    });
+}
+
+function renderAgentsList() {
+    if(!els.listAgents) return;
+    els.listAgents.innerHTML = '';
+    if(state.agents.length === 0) {
+        els.listAgents.innerHTML = '<div style="padding:8px; color:var(--text-sec); text-align:center;">Nenhum agente cadastrado.</div>';
+        return;
+    }
+    
+    state.agents.forEach(agent => {
+        const div = document.createElement('div');
+        div.className = 'agent-item';
+        div.innerHTML = `
+            <span>${agent.name}</span>
+            <button class="agent-delete-btn" data-id="${agent.id}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+        const btnDelete = div.querySelector('.agent-delete-btn');
+        btnDelete.addEventListener('click', async () => {
+            try {
+                const res = await fetch(\`/api/v1/agents/\${agent.id}\`, {
+                    method: 'DELETE',
+                    headers: { 'x-api-key': window.NOC_API_KEY }
+                });
+                if(res.ok) await fetchAgents();
+            } catch(e) { console.error("Erro ao deletar agente", e); }
+        });
+        els.listAgents.appendChild(div);
+    });
 }
 
 // Run

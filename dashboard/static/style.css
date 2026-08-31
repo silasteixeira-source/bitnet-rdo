@@ -445,3 +445,41 @@ tr:last-child td { border-bottom: none; }
 .event-time { font-size: 11px; color: var(--text-tertiary); min-width: 45px; }
 .event-content { font-size: 13px; }
 .event-content .highlight { color: var(--brand-active); font-weight: 500; }
+
+/* Estilos de Agentes */
+.agent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.agent-item:last-child {
+    border-bottom: none;
+}
+.agent-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--status-critical);
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+.agent-delete-btn:hover {
+    opacity: 1;
+}
+.agent-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+}
+.agent-select:focus {
+    border-color: var(--brand-active);
+}
