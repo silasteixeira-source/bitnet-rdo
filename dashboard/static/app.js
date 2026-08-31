@@ -7,6 +7,8 @@ const state = {
     filterUf: '',
     filterStatus: '',
     searchQuery: '',
+    filterUfOs: '',
+    filterStatusOs: '',
     searchQueryOs: '',
     currentFilteredList: [],
     currentFilteredOsList: [],
@@ -73,6 +75,8 @@ const els = {
     // Novas Views
     tableOs: document.querySelector('#table-os tbody'),
     searchOs: document.getElementById('search-os'),
+    filterUfOs: document.getElementById('filter-uf-os'),
+    filterStatusOs: document.getElementById('filter-status-os'),
     btnExportExcelOs: document.getElementById('btn-export-excel-os'),
     tableRecoveries: document.querySelector('#table-recoveries tbody'),
     
@@ -249,6 +253,20 @@ function setupEventListeners() {
     if (els.searchOs) {
         els.searchOs.addEventListener('input', (e) => {
             state.searchQueryOs = e.target.value.trim();
+            renderOs();
+        });
+    }
+    
+    if (els.filterUfOs) {
+        els.filterUfOs.addEventListener('change', (e) => {
+            state.filterUfOs = e.target.value;
+            renderOs();
+        });
+    }
+    
+    if (els.filterStatusOs) {
+        els.filterStatusOs.addEventListener('change', (e) => {
+            state.filterStatusOs = e.target.value;
             renderOs();
         });
     }
@@ -502,6 +520,7 @@ function updateUI() {
     if(!state.lastValidData) return;
     
     populateUfFilter();
+    populateFiltersOs();
     updateKPIs();
     
     if(state.currentView === 'view-overview') {
@@ -535,6 +554,41 @@ function populateUfFilter() {
         els.filterUf.appendChild(opt);
     });
     els.filterUf.value = curr;
+}
+
+function populateFiltersOs() {
+    if (!els.filterUfOs || !els.filterStatusOs) return;
+    
+    const list = state.lastValidData.abertos || [];
+    const ufs = new Set();
+    const statuses = new Set();
+    
+    list.forEach(item => {
+        if (item['UF'] && item['UF'] !== "-") ufs.add(item['UF'].trim());
+        if (item['Status'] && item['Status'] !== "-") statuses.add(item['Status'].trim());
+    });
+    
+    const currUf = els.filterUfOs.value;
+    els.filterUfOs.innerHTML = '<option value="">UF: Todas</option>';
+    Array.from(ufs).sort().forEach(uf => {
+        if(!uf) return;
+        const opt = document.createElement('option');
+        opt.value = uf;
+        opt.textContent = uf;
+        els.filterUfOs.appendChild(opt);
+    });
+    els.filterUfOs.value = currUf;
+    
+    const currStatus = els.filterStatusOs.value;
+    els.filterStatusOs.innerHTML = '<option value="">Status: Todos</option>';
+    Array.from(statuses).sort().forEach(s => {
+        if(!s) return;
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        els.filterStatusOs.appendChild(opt);
+    });
+    els.filterStatusOs.value = currStatus;
 }
 
 function updateKPIs() {
@@ -919,6 +973,16 @@ function renderOs() {
     if(!els.tableOs) return;
     els.tableOs.innerHTML = '';
     let list = state.lastValidData.abertos || [];
+    
+    // Filtro UF OS
+    if (state.filterUfOs) {
+        list = list.filter(item => item['UF'] === state.filterUfOs);
+    }
+    
+    // Filtro Status OS
+    if (state.filterStatusOs) {
+        list = list.filter(item => item['Status'] === state.filterStatusOs);
+    }
     
     // Filtro de Busca OS
     if (state.searchQueryOs) {
