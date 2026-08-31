@@ -252,6 +252,18 @@
             
             <!-- Outras Views -->
             <div class="view" id="view-os">
+                <div class="filter-bar">
+                    <input type="text" class="filter-input" id="search-os" placeholder="Buscar INEP, Escola, Ticket ou Status..." style="background:var(--bg-card); border:1px solid var(--border-color); color:var(--text-main); padding:8px 12px; border-radius:4px; width:300px;">
+                    <div style="flex-grow:1"></div>
+                    <button class="btn" id="btn-export-excel-os" style="background: var(--status-warning); border-color: var(--status-warning); color: #fff;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Exportar Excel
+                    </button>
+                </div>
                 <div class="table-wrapper">
                     <table id="table-os">
                         <thead>

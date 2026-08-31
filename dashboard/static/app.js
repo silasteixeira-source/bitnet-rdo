@@ -7,7 +7,9 @@ const state = {
     filterUf: '',
     filterStatus: '',
     searchQuery: '',
+    searchQueryOs: '',
     currentFilteredList: [],
+    currentFilteredOsList: [],
     previousRecoveredIneps: new Set(),
     alertsEnabled: localStorage.getItem('nocAlertsEnabled') === 'true',
     hasAlertedStaleData: false,
@@ -70,6 +72,8 @@ const els = {
     
     // Novas Views
     tableOs: document.querySelector('#table-os tbody'),
+    searchOs: document.getElementById('search-os'),
+    btnExportExcelOs: document.getElementById('btn-export-excel-os'),
     tableRecoveries: document.querySelector('#table-recoveries tbody'),
     
     // Drawer
@@ -240,6 +244,54 @@ function setupEventListeners() {
             renderIncidents();
         });
     });
+    
+    // Eventos da aba OS em Andamento
+    if (els.searchOs) {
+        els.searchOs.addEventListener('input', (e) => {
+            state.searchQueryOs = e.target.value.trim();
+            renderOs();
+        });
+    }
+    
+    if (els.btnExportExcelOs) {
+        els.btnExportExcelOs.addEventListener('click', () => {
+            if(!state.currentFilteredOsList || state.currentFilteredOsList.length === 0) {
+                alert("Não há dados para exportar com os filtros atuais.");
+                return;
+            }
+            
+            const dataToExport = state.currentFilteredOsList.map(item => {
+                const nameField = item['NAME'] || item['Nome'] || '';
+                let localidade = '-';
+                if (item['Municipio'] && item['UF'] && item['Municipio'] !== '-' && item['UF'] !== '-') {
+                    localidade = `${item['Municipio']} / ${item['UF']}`;
+                } else if (nameField.includes('-')) {
+                    localidade = nameField.split('-')[0].trim();
+                } else {
+                    localidade = nameField || '-';
+                }
+
+                return {
+                    "Ticket": item['Ticket#'] || 'S/N',
+                    "Status": item['Status'] || 'Em Análise',
+                    "Escola": item['Nome da Escola'] || item['Escola'] || '',
+                    "Localidade": localidade,
+                    "INEP": item['INEP_Extraido'] || item['INEP'] || '',
+                    "Causa": item['Causa'] || ''
+                };
+            });
+            
+            try {
+                const ws = XLSX.utils.json_to_sheet(dataToExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "OS em Andamento");
+                XLSX.writeFile(wb, `OS_em_Andamento_NOC_${new Date().getTime()}.xlsx`);
+            } catch (err) {
+                console.error("Erro ao gerar Excel:", err);
+                alert("Falha ao gerar o arquivo Excel. Verifique o console.");
+            }
+        });
+    }
 }
 
 // Routing (SPA)
@@ -866,7 +918,21 @@ function renderIncidents() {
 function renderOs() {
     if(!els.tableOs) return;
     els.tableOs.innerHTML = '';
-    const list = state.lastValidData.abertos || [];
+    let list = state.lastValidData.abertos || [];
+    
+    // Filtro de Busca OS
+    if (state.searchQueryOs) {
+        const q = state.searchQueryOs.toLowerCase();
+        list = list.filter(item => {
+            const inep = (item['INEP_Extraido'] || item['INEP'] || '').toString().toLowerCase();
+            const esc = (item['Nome da Escola'] || item['Escola'] || item['NAME'] || item['Nome'] || '').toLowerCase();
+            const ticket = (item['Ticket#'] || '').toString().toLowerCase();
+            const status = (item['Status'] || '').toLowerCase();
+            return inep.includes(q) || esc.includes(q) || ticket.includes(q) || status.includes(q);
+        });
+    }
+    
+    state.currentFilteredOsList = list;
     
     if(list.length === 0) {
         els.tableOs.innerHTML = `<tr><td colspan="6"><div class="empty-state"><h3>Nenhuma OS em Andamento</h3></div></td></tr>`;
