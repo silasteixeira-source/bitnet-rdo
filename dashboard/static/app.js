@@ -291,7 +291,7 @@ function setupEventListeners() {
 
                 return {
                     "Ticket": item['Ticket#'] || 'S/N',
-                    "Status": item['Status'] || 'Em Análise',
+                    "Status": getStatusFromOsItem(item),
                     "Escola": item['Nome da Escola'] || item['Escola'] || '',
                     "Localidade": localidade,
                     "INEP": item['INEP_Extraido'] || item['INEP'] || '',
@@ -556,6 +556,21 @@ function populateUfFilter() {
     els.filterUf.value = curr;
 }
 
+function getUfFromOsItem(item) {
+    if (item['UF'] && item['UF'] !== "-") return item['UF'].trim();
+    const nameField = item['NAME'] || item['Nome'] || '';
+    if (nameField.includes('/')) {
+        const parts = nameField.split('/');
+        return parts[parts.length - 1].split('-')[0].trim();
+    }
+    return '';
+}
+
+function getStatusFromOsItem(item) {
+    const s = item['Status'] || item['Status_y'] || item['Status_x'] || 'Em Análise';
+    return s.trim();
+}
+
 function populateFiltersOs() {
     if (!els.filterUfOs || !els.filterStatusOs) return;
     
@@ -564,14 +579,16 @@ function populateFiltersOs() {
     const statuses = new Set();
     
     list.forEach(item => {
-        if (item['UF'] && item['UF'] !== "-") ufs.add(item['UF'].trim());
-        if (item['Status'] && item['Status'] !== "-") statuses.add(item['Status'].trim());
+        const uf = getUfFromOsItem(item);
+        if (uf) ufs.add(uf);
+        
+        const s = getStatusFromOsItem(item);
+        if (s) statuses.add(s);
     });
     
     const currUf = els.filterUfOs.value;
     els.filterUfOs.innerHTML = '<option value="">UF: Todas</option>';
     Array.from(ufs).sort().forEach(uf => {
-        if(!uf) return;
         const opt = document.createElement('option');
         opt.value = uf;
         opt.textContent = uf;
@@ -582,7 +599,6 @@ function populateFiltersOs() {
     const currStatus = els.filterStatusOs.value;
     els.filterStatusOs.innerHTML = '<option value="">Status: Todos</option>';
     Array.from(statuses).sort().forEach(s => {
-        if(!s) return;
         const opt = document.createElement('option');
         opt.value = s;
         opt.textContent = s;
@@ -976,12 +992,12 @@ function renderOs() {
     
     // Filtro UF OS
     if (state.filterUfOs) {
-        list = list.filter(item => item['UF'] === state.filterUfOs);
+        list = list.filter(item => getUfFromOsItem(item) === state.filterUfOs);
     }
     
     // Filtro Status OS
     if (state.filterStatusOs) {
-        list = list.filter(item => item['Status'] === state.filterStatusOs);
+        list = list.filter(item => getStatusFromOsItem(item) === state.filterStatusOs);
     }
     
     // Filtro de Busca OS
@@ -1007,7 +1023,7 @@ function renderOs() {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
         const ticket = item['Ticket#'] || 'S/N';
-        const status = item['Status'] || 'Em Análise';
+        const status = getStatusFromOsItem(item);
         
         const nameField = item['NAME'] || item['Nome'] || '';
         let localidade = '-';
