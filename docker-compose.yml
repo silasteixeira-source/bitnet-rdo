@@ -130,8 +130,8 @@ services:
       - WEBHOOK_URL=https://${DOMAIN_N8N}/
       - GENERIC_TIMEZONE=America/Sao_Paulo
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-senha_forte_n8n}
+      - N8N_BASIC_AUTH_USER=${N8N_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_RESTRICT_FILE_ACCESS_TO=/app/.streamlit
     volumes:
