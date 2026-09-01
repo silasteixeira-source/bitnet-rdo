@@ -18,7 +18,8 @@ const state = {
     activeTab: 'todos', // 'todos', 'critico', 'aguardar'
     currentView: 'view-overview',
     agents: [],
-    assignments: {}
+    assignments: {},
+    hiddenTickets: {}
 };
 
 // DOM Elements
@@ -119,6 +120,7 @@ async function init() {
     }
     await fetchAgents();
     await fetchAssignments();
+    await fetchHiddenTickets();
     setupEventListeners();
     setupAgentsListeners();
     fetchData();
@@ -1115,7 +1117,14 @@ function renderOs() {
 function renderRecoveries() {
     if(!els.tableRecoveries) return;
     els.tableRecoveries.innerHTML = '';
-    const list = state.lastValidData.fechar || [];
+    let list = state.lastValidData.fechar || [];
+    
+    if (state.hiddenTickets) {
+        list = list.filter(item => {
+            const inep = item['INEP_Extraido'] || item['INEP'] || '-';
+            return !state.hiddenTickets[inep];
+        });
+    }
     
     if(list.length === 0) {
         els.tableRecoveries.innerHTML = `<tr><td colspan="6"><div class="empty-state"><h3>Nenhuma Recuperação Pendente</h3></div></td></tr>`;
@@ -1169,6 +1178,16 @@ function renderRecoveries() {
         btn.textContent = 'Copiar Dados P/ Fechar';
         btn.onclick = () => navigator.clipboard.writeText(`Fechamento INEP: ${inep} - Ticket: ${ticket} - ONLINE`);
         tdAcao.appendChild(btn);
+
+        const btnConcluir = document.createElement('button');
+        btnConcluir.className = 'btn';
+        btnConcluir.style.marginLeft = '8px';
+        btnConcluir.style.backgroundColor = 'var(--status-success)';
+        btnConcluir.style.color = '#fff';
+        btnConcluir.style.borderColor = 'var(--status-success)';
+        btnConcluir.textContent = 'Concluir';
+        btnConcluir.onclick = () => hideTicket(inep);
+        tdAcao.appendChild(btnConcluir);
         
         tr.appendChild(tdTicket);
         tr.appendChild(tdStatus);
@@ -1277,6 +1296,25 @@ async function saveAssignment(inep, agentId) {
         });
         state.assignments[inep] = agentId;
     } catch(e) { console.error("Erro ao salvar atribuição", e); }
+}
+
+async function fetchHiddenTickets() {
+    try {
+        const res = await fetch('/api/v1/hidden_tickets', { headers: { 'x-api-key': window.NOC_API_KEY } });
+        if (res.ok) state.hiddenTickets = await res.json();
+    } catch(e) { console.error("Erro ao carregar tickets ocultos", e); }
+}
+
+async function hideTicket(inep) {
+    try {
+        await fetch('/api/v1/hidden_tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+            body: JSON.stringify({ inep: inep })
+        });
+        state.hiddenTickets[inep] = new Date().toISOString();
+        if(els.tableRecoveries) renderRecoveries();
+    } catch(e) { console.error("Erro ao ocultar ticket", e); }
 }
 
 function setupAgentsListeners() {

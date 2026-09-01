@@ -18,6 +18,9 @@ class Assignment(BaseModel):
     inep: str
     agent_id: str
 
+class HiddenTicket(BaseModel):
+    inep: str
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -105,6 +108,34 @@ def set_assignment(assignment: Assignment, x_api_key: str = Depends(verify_api_k
         assignments[assignment.inep] = assignment.agent_id
     write_json_db("assignments.json", assignments)
     return {"status": "ok", "inep": assignment.inep, "agent_id": assignment.agent_id}
+
+@app.get("/api/v1/hidden_tickets")
+def get_hidden_tickets():
+    hidden = read_json_db("hidden_tickets.json", default={})
+    now = datetime.datetime.now()
+    valid_hidden = {}
+    changed = False
+    for inep, ts_str in hidden.items():
+        try:
+            ts = datetime.datetime.fromisoformat(ts_str)
+            if (now - ts).total_seconds() < 86400: # 24 hours
+                valid_hidden[inep] = ts_str
+            else:
+                changed = True
+        except:
+            changed = True
+    
+    if changed:
+        write_json_db("hidden_tickets.json", valid_hidden)
+        
+    return valid_hidden
+
+@app.post("/api/v1/hidden_tickets")
+def add_hidden_ticket(ticket: HiddenTicket, x_api_key: str = Depends(verify_api_key)):
+    hidden = read_json_db("hidden_tickets.json", default={})
+    hidden[ticket.inep] = datetime.datetime.now().isoformat()
+    write_json_db("hidden_tickets.json", hidden)
+    return {"status": "ok", "inep": ticket.inep}
 
 @app.get("/api/v1/dashboard")
 def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
