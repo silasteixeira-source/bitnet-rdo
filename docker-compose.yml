@@ -110,6 +110,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
+      - DOMAIN_RDO=${DOMAIN_RDO}
       - DOMAIN_N8N=${DOMAIN_N8N}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile

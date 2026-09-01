@@ -5,8 +5,7 @@
     reverse_proxy n8n:5678
 }
 
-# Rota para o Painel do NOC (Dashboard) via IP (HTTP padrão na porta 80)
-# Se futuramente tiver um domínio, basta mudar :80 para o domínio, ex: painel.rinnecloud.shop
-:80 {
+# Rota para o Painel do NOC (Dashboard) com HTTPS automático
+{$DOMAIN_RDO} {
     reverse_proxy noc-dashboard:8080
 }
