@@ -95,10 +95,48 @@ services:
       dockerfile: Dockerfile
     container_name: rdo_noc_dashboard
     restart: unless-stopped
-    ports:
-      - "80:8080"
     environment:
       - TZ=America/Sao_Paulo
       - NOC_API_KEY=${NOC_API_KEY:-""}
     volumes:
       - ./.streamlit:/app/.streamlit
+
+  # Proxy Reverso Caddy
+  caddy:
+    image: caddy:2-alpine
+    container_name: rdo_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_N8N=${DOMAIN_N8N}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # n8n - Automações
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: rdo_n8n
+    restart: always
+    environment:
+      - N8N_HOST=${DOMAIN_N8N}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${DOMAIN_N8N}/
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-senha_forte_n8n}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./.streamlit:/app/.streamlit
+
+volumes:
+  caddy_data:
+  caddy_config:
+  n8n_data:
+
