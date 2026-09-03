@@ -100,7 +100,57 @@ def get_escolas_db_cache(client):
                     'Escola': str(row.get('Nome da Escola', '')).strip(),
                     'Parceiro': str(row.get('Parceiro RI', '')).strip()
                 }
-        
+    except Exception as e_sheet:
+        log(f"Aviso: Não foi possível ler DB Escolas como planilha nativa ({e_sheet}). Tentando via Google Drive API (.xlsx)...")
+        try:
+            import re
+            import io
+            import requests
+            import google.auth.transport.requests
+            import pandas as pd
+            
+            match = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
+            if not match:
+                raise ValueError("ID do arquivo Google Drive não encontrado na URL.")
+            file_id = match.group(1)
+            
+            req_auth = google.auth.transport.requests.Request()
+            client.http_client.auth.refresh(req_auth)
+            token = client.http_client.auth.token
+            
+            url_drive = f"https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+            headers = {"Authorization": f"Bearer {token}"}
+            res = requests.get(url_drive, headers=headers)
+            if res.status_code == 200:
+                df_db = pd.read_excel(io.BytesIO(res.content))
+                for _, row in df_db.iterrows():
+                    inep = str(row.get('Código INEP', '')).strip().replace('.0', '')
+                    if inep and inep != 'nan':
+                        db_map[inep] = {
+                            'UF': str(row.get('UF', '')).strip().replace('nan', ''),
+                            'Municipio': str(row.get('Município', '')).strip().replace('nan', ''),
+                            'Escola': str(row.get('Nome da Escola', '')).strip().replace('nan', ''),
+                            'Parceiro': str(row.get('Parceiro RI', '')).strip().replace('nan', '')
+                        }
+            else:
+                raise Exception(f"Erro {res.status_code} na API do Google Drive.")
+        except Exception as e:
+            import traceback
+            erro_detalhado = traceback.format_exc()
+            log(f"Erro ao baixar DB Escolas via Drive API: {e}\n{erro_detalhado}")
+            if os.path.exists(cache_path):
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            return {}
+            
+    if not db_map:
+        log("Aviso: Nenhum dado extraído do DB Escolas. Retornando cache anterior.")
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+    try:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(db_map, f, ensure_ascii=False, indent=2)
@@ -108,11 +158,8 @@ def get_escolas_db_cache(client):
         log(f"Cache do DB Escolas atualizado com sucesso ({len(db_map)} escolas).")
         return db_map
     except Exception as e:
-        log(f"Erro ao baixar DB Escolas: {e}")
-        if os.path.exists(cache_path):
-            with open(cache_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return {}
+        log(f"Erro ao salvar cache do DB Escolas: {e}")
+        return db_map
 
 def update_gsheet_tab(client, spreadsheet_url, sheet_name, df, max_retries=3):
     """Atualiza ou cria a aba especificada no Google Sheets, com tentativas em caso de erro de cota."""
