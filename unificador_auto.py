@@ -11,6 +11,7 @@ import argparse
 from datetime import datetime, timezone, timedelta
 import pandas as pd
 import gspread
+import json
 from google.oauth2.service_account import Credentials
 
 # Fuso horário oficial de Brasília (UTC-3)
@@ -57,6 +58,59 @@ def get_gspread_client():
 def get_escolas_eace_map(client):
     # Desativado - agora mapeamos diretamente da planilha OS
     return {}
+
+def get_escolas_db_cache(client):
+    """Busca o DB de Escolas do GSheets e faz cache em JSON (24h de validade)."""
+    cache_path = "/app/.streamlit/escolas_db_cache.json"
+    if not os.path.exists("/app/.streamlit"):
+        cache_path = ".streamlit/escolas_db_cache.json"
+        
+    url = os.getenv("ESCOLAS_DB_URL", "https://docs.google.com/spreadsheets/d/1Onw1vaSO2SIQ_OfAoDPI6ycnXWTAZ2ijhtujAOhI9UM/edit?usp=sharing")
+    
+    agora = time.time()
+    if os.path.exists(cache_path):
+        mtime = os.path.getmtime(cache_path)
+        if (agora - mtime) < 86400: # 24 horas
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                log(f"Erro ao ler cache do DB Escolas: {e}. Baixando novamente...")
+                
+    if not client:
+        log("Sem cliente GSpread para baixar DB Escolas. Tentando usar cache antigo.")
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+        
+    log("Baixando Banco de Dados de Escolas do Google Sheets para o cache...")
+    db_map = {}
+    try:
+        sheet = client.open_by_url(url).sheet1
+        records = sheet.get_all_records()
+        for row in records:
+            inep = str(row.get('Código INEP', '')).strip().replace('.0', '')
+            if inep:
+                db_map[inep] = {
+                    'UF': str(row.get('UF', '')).strip(),
+                    'Municipio': str(row.get('Município', '')).strip(),
+                    'Escola': str(row.get('Nome da Escola', '')).strip(),
+                    'Parceiro': str(row.get('Parceiro RI', '')).strip()
+                }
+        
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(db_map, f, ensure_ascii=False, indent=2)
+            
+        log(f"Cache do DB Escolas atualizado com sucesso ({len(db_map)} escolas).")
+        return db_map
+    except Exception as e:
+        log(f"Erro ao baixar DB Escolas: {e}")
+        if os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
 
 def update_gsheet_tab(client, spreadsheet_url, sheet_name, df, max_retries=3):
     """Atualiza ou cria a aba especificada no Google Sheets, com tentativas em caso de erro de cota."""
@@ -429,6 +483,9 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             return prefix[:2], prefix[3:].strip()
         return "-", prefix
 
+    # Carrega o cache do Banco de Dados das escolas
+    escolas_db_map = get_escolas_db_cache(client)
+    
     def formatar_e_limpar(df_alvo):
         if not isinstance(df_alvo, pd.DataFrame):
             return df_alvo
@@ -438,27 +495,38 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         if 'INEP_Extraido' in df_alvo.columns:
             def get_nome(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                nome_eace = os_map.get(inep, {}).get('Escola', '')
-                return nome_eace if nome_eace else "Não Cadastrado na EACE"
+                nome = escolas_db_map.get(inep, {}).get('Escola', '')
+                if not nome:
+                    nome = os_map.get(inep, {}).get('Escola', '')
+                return nome if nome else "Não Cadastrado na EACE"
                 
             def get_uf(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                uf = os_map.get(inep, {}).get('UF', '')
+                uf = escolas_db_map.get(inep, {}).get('UF', '')
+                if not uf:
+                    uf = os_map.get(inep, {}).get('UF', '')
                 if not uf or uf == '-':
                     uf, _ = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                 return uf
                 
             def get_mun(row):
                 inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                mun = os_map.get(inep, {}).get('Municipio', '')
+                mun = escolas_db_map.get(inep, {}).get('Municipio', '')
+                if not mun:
+                    mun = os_map.get(inep, {}).get('Municipio', '')
                 if not mun or mun == '-':
                     _, mun = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                 return mun
+                
+            def get_parceiro(row):
+                inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                parceiro = escolas_db_map.get(inep, {}).get('Parceiro', '')
+                return parceiro if parceiro else "-"
 
             df_alvo['Nome da Escola'] = df_alvo.apply(get_nome, axis=1)
             df_alvo['UF'] = df_alvo.apply(get_uf, axis=1)
             df_alvo['Municipio'] = df_alvo.apply(get_mun, axis=1)
-            df_alvo['Parceiro'] = "-"
+            df_alvo['Parceiro'] = df_alvo.apply(get_parceiro, axis=1)
             
             cols = list(df_alvo.columns)
             if 'Nome da Escola' in cols:

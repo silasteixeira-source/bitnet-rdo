@@ -3,7 +3,7 @@ import pandas as pd
 import io
 import gspread
 from google.oauth2.service_account import Credentials
-
+from unificador_auto import get_escolas_db_cache
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive'
@@ -347,6 +347,9 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                         df_['Regra'] = df_['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[0])
                         df_['Tempo Offline'] = df_['Regra de Abertura (4h Offline)'].apply(lambda x: safe_extract_rule_time(x)[1])
 
+                client_gspread = authenticate_gspread()
+                escolas_db_map = get_escolas_db_cache(client_gspread)
+                
                 def formatar_e_limpar(df_alvo):
                     if not isinstance(df_alvo, pd.DataFrame):
                         return df_alvo
@@ -356,27 +359,38 @@ if st.button("🚀 Processar Fluxo Completo", type="primary", use_container_widt
                     if 'INEP_Extraido' in df_alvo.columns:
                         def get_nome(row):
                             inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                            nome_eace = os_map.get(inep, {}).get('Escola', '')
-                            return nome_eace if nome_eace else "Não Cadastrado na EACE"
+                            nome = escolas_db_map.get(inep, {}).get('Escola', '')
+                            if not nome:
+                                nome = os_map.get(inep, {}).get('Escola', '')
+                            return nome if nome else "Não Cadastrado na EACE"
                             
                         def get_uf(row):
                             inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                            uf = os_map.get(inep, {}).get('UF', '')
+                            uf = escolas_db_map.get(inep, {}).get('UF', '')
+                            if not uf:
+                                uf = os_map.get(inep, {}).get('UF', '')
                             if not uf or uf == '-':
                                 uf, _ = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                             return uf
                             
                         def get_mun(row):
                             inep = str(row['INEP_Extraido']).strip().replace('.0', '')
-                            mun = os_map.get(inep, {}).get('Municipio', '')
+                            mun = escolas_db_map.get(inep, {}).get('Municipio', '')
+                            if not mun:
+                                mun = os_map.get(inep, {}).get('Municipio', '')
                             if not mun or mun == '-':
                                 _, mun = extrair_uf_cidade_fallback(row.get('NAME') or row.get('Nome') or '')
                             return mun
+                            
+                        def get_parceiro(row):
+                            inep = str(row['INEP_Extraido']).strip().replace('.0', '')
+                            parceiro = escolas_db_map.get(inep, {}).get('Parceiro', '')
+                            return parceiro if parceiro else "-"
 
                         df_alvo['Nome da Escola'] = df_alvo.apply(get_nome, axis=1)
                         df_alvo['UF'] = df_alvo.apply(get_uf, axis=1)
                         df_alvo['Municipio'] = df_alvo.apply(get_mun, axis=1)
-                        df_alvo['Parceiro'] = "-"
+                        df_alvo['Parceiro'] = df_alvo.apply(get_parceiro, axis=1)
                         
                         cols = list(df_alvo.columns)
                         if 'Nome da Escola' in cols:

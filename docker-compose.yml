@@ -62,6 +62,7 @@ services:
       - EACE_ST1_EMAIL=${EACE_ST1_EMAIL:-""}
       - EACE_ST1_PASSWORD=${EACE_ST1_PASSWORD:-""}
       - EACE_INTERVAL=${EACE_INTERVAL:-300}
+      - ESCOLAS_DB_URL=${ESCOLAS_DB_URL:-""}
     volumes:
       - ./eace/dados_eace:/app/dados_eace
       - ./eace/dados_st1:/app/dados_st1
