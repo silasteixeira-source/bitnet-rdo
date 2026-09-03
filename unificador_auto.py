@@ -65,8 +65,10 @@ def get_escolas_db_cache(client):
     if not os.path.exists("/app/.streamlit"):
         cache_path = ".streamlit/escolas_db_cache.json"
         
-    url = os.getenv("ESCOLAS_DB_URL")
-    if not url or url.strip() == "":
+    url = os.getenv("ESCOLAS_DB_URL", "")
+    if url:
+        url = url.strip().strip('"').strip("'")
+    if not url:
         url = "https://docs.google.com/spreadsheets/d/1Onw1vaSO2SIQ_OfAoDPI6ycnXWTAZ2ijhtujAOhI9UM/edit?usp=sharing"
     
     agora = time.time()
