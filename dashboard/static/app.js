@@ -538,6 +538,10 @@ function setSyncState(status, text) {
 function updateUI() {
     if(!state.lastValidData) return;
     
+    if (typeof updateDetailedListsData === 'function') {
+        updateDetailedListsData(state.lastValidData);
+    }
+    
     populateUfFilter();
     populateFiltersOs();
     updateKPIs();
@@ -550,6 +554,8 @@ function updateUI() {
         renderOs();
     } else if(state.currentView === 'view-recoveries') {
         renderRecoveries();
+    } else if(state.currentView === 'view-detailed-lists') {
+        renderDetailedList(currentDetailedListType || 'online');
     }
 }
 
@@ -1380,3 +1386,80 @@ function renderAgentsList() {
 
 // Run
 document.addEventListener('DOMContentLoaded', init);
+
+// --- Detalhamento de Registros ---
+let detailedListData = { online: [], offline: [], ignorados: [] };
+window.currentDetailedListType = 'online';
+
+function updateDetailedListsData(data) {
+    detailedListData.online = data.list_online || [];
+    detailedListData.offline = data.list_offline || [];
+    detailedListData.ignorados = data.list_ignorados || [];
+    
+    const co = document.getElementById('count-list-online');
+    if(co) co.textContent = detailedListData.online.length;
+    const cf = document.getElementById('count-list-offline');
+    if(cf) cf.textContent = detailedListData.offline.length;
+    const ci = document.getElementById('count-list-ignorados');
+    if(ci) ci.textContent = detailedListData.ignorados.length;
+    
+    if (state.currentView === 'view-detailed-lists') {
+        renderDetailedList(currentDetailedListType);
+    }
+}
+
+window.renderDetailedList = function(type) {
+    currentDetailedListType = type;
+    
+    // Update button styles
+    const btns = ['online', 'offline', 'ignorados'];
+    btns.forEach(b => {
+        const btn = document.getElementById('btn-list-' + b);
+        if(btn) {
+            if(b === type) {
+                btn.style.opacity = '1';
+                btn.style.boxShadow = '0 0 10px rgba(255,255,255,0.2)';
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.boxShadow = 'none';
+            }
+        }
+    });
+    
+    filterDetailedList();
+};
+
+window.filterDetailedList = function() {
+    const list = detailedListData[currentDetailedListType] || [];
+    const searchInput = document.getElementById('detailed-search-input');
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    const filtered = list.filter(item => {
+        const inep = String(item.INEP_Extraido || '').toLowerCase();
+        const nome = String(item.NAME || item.Escola || '').toLowerCase();
+        return inep.includes(search) || nome.includes(search);
+    });
+    
+    const tbody = document.getElementById('detailed-list-body');
+    if (!tbody) return;
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:24px;">Nenhum registro encontrado.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(item => {
+        const inep = item.INEP_Extraido || '-';
+        const nome = item.NAME || item.Escola || 'Sem nome';
+        const status = item.STATUS || (currentDetailedListType === 'offline' ? 'OFFLINE' : (currentDetailedListType === 'online' ? 'ONLINE' : '-'));
+        const statusColor = status.toUpperCase().includes('OFFLINE') ? 'var(--status-critical)' : (status.toUpperCase().includes('ONLINE') ? 'var(--status-ok)' : 'var(--text-sec)');
+        
+        return `
+            <tr class="table-row">
+                <td style="font-family: monospace; color: var(--text-sec);">${inep}</td>
+                <td style="font-weight: 500;">${nome}</td>
+                <td><span class="badge" style="background:${statusColor}20; color:${statusColor}">${status}</span></td>
+            </tr>
+        `;
+    }).join('');
+};

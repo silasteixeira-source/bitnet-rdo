@@ -42,6 +42,10 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                 <span>Qualidade Cadastral</span>
             </a>
+            <a class="nav-item" data-target="view-detailed-lists" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <span>Detalhamento de Registros</span>
+            </a>
             <a class="nav-item" data-target="view-history" tabindex="0" style="margin-top:auto">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                 <span>Histórico (Em Breve)</span>
@@ -403,6 +407,37 @@
             </div>
         </div>
     </aside>
+
+    <!-- View: Detalhamento de Registros -->
+    <div class="view" id="view-detailed-lists" style="display:none; padding: 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+            <h2 style="margin:0; font-size:1.5rem;">Detalhamento de Equipamentos</h2>
+            <div style="display:flex; gap: 8px;">
+                <button class="btn btn-primary" id="btn-list-online" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
+                <button class="btn" id="btn-list-offline" style="background:var(--status-critical); color:white; border:none;" onclick="renderDetailedList('offline')">Offline (<span id="count-list-offline">0</span>)</button>
+                <button class="btn" id="btn-list-ignorados" style="background:var(--border-strong); color:white; border:none;" onclick="renderDetailedList('ignorados')">Ignorados (<span id="count-list-ignorados">0</span>)</button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <input type="text" id="detailed-search-input" class="search-input" style="width:100%; max-width:400px;" placeholder="Buscar INEP ou Escola nesta lista..." onkeyup="filterDetailedList()">
+        </div>
+
+        <div class="table-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+            <table class="data-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">INEP</th>
+                        <th>Escola / Identificação</th>
+                        <th style="width: 100px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="detailed-list-body">
+                    <tr><td colspan="3" style="text-align:center; padding:24px;">Carregando dados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <!-- Modal de Gerenciamento de Agentes -->
     <div id="modal-agents" class="drawer-overlay" style="display:none; align-items:center; justify-content:center; z-index:2000;">

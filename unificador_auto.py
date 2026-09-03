@@ -673,11 +673,18 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     total_offline = len(df_validos)
     total_online = total_registros - total_offline
     total_ignorados = len(df_new) - total_registros
+    
+    # Criando os DataFrames para as listas detalhadas
+    df_list_online = df_new_validos[~df_new_validos['INEP_Extraido'].isin(df_validos['INEP_Extraido'])]
+    df_list_ignorados = df_new[~mask_df_new_rdo]
 
     snapshot_data = {
         "falta_abrir": df_falta_abrir.to_dict(orient='records'),
         "abertos": df_ja_aberto.to_dict(orient='records'),
         "fechar": df_fechar_chamado.to_dict(orient='records'),
+        "list_online": df_list_online.fillna("").to_dict(orient='records'),
+        "list_offline": df_validos.fillna("").to_dict(orient='records'),
+        "list_ignorados": df_list_ignorados.fillna("").to_dict(orient='records'),
         "updated_at": hora_execucao_br,
         "health": health_status,
         "stats": {
