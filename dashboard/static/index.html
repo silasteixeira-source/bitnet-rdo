@@ -340,6 +340,37 @@
                 </div>
             </div>
 
+            <!-- View: Detalhamento de Registros -->
+            <div class="view" id="view-detailed-lists" style="padding: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+                    <h2 style="margin:0; font-size:1.5rem;">Detalhamento de Equipamentos</h2>
+                    <div style="display:flex; gap: 8px;">
+                        <button class="btn btn-primary" id="btn-list-online" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
+                        <button class="btn" id="btn-list-offline" style="background:var(--status-critical); color:white; border:none;" onclick="renderDetailedList('offline')">Offline (<span id="count-list-offline">0</span>)</button>
+                        <button class="btn" id="btn-list-ignorados" style="background:var(--border-strong); color:white; border:none;" onclick="renderDetailedList('ignorados')">Ignorados (<span id="count-list-ignorados">0</span>)</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <input type="text" id="detailed-search-input" class="search-input" style="width:100%; max-width:400px;" placeholder="Buscar INEP ou Escola nesta lista..." onkeyup="filterDetailedList()">
+                </div>
+
+                <div class="table-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
+                    <table class="data-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 120px;">INEP</th>
+                                <th>Escola / Identificação</th>
+                                <th style="width: 100px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailed-list-body">
+                            <tr><td colspan="3" style="text-align:center; padding:24px;">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -407,37 +438,6 @@
             </div>
         </div>
     </aside>
-
-    <!-- View: Detalhamento de Registros -->
-    <div class="view" id="view-detailed-lists" style="display:none; padding: 24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
-            <h2 style="margin:0; font-size:1.5rem;">Detalhamento de Equipamentos</h2>
-            <div style="display:flex; gap: 8px;">
-                <button class="btn btn-primary" id="btn-list-online" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
-                <button class="btn" id="btn-list-offline" style="background:var(--status-critical); color:white; border:none;" onclick="renderDetailedList('offline')">Offline (<span id="count-list-offline">0</span>)</button>
-                <button class="btn" id="btn-list-ignorados" style="background:var(--border-strong); color:white; border:none;" onclick="renderDetailedList('ignorados')">Ignorados (<span id="count-list-ignorados">0</span>)</button>
-            </div>
-        </div>
-
-        <div style="margin-bottom: 16px;">
-            <input type="text" id="detailed-search-input" class="search-input" style="width:100%; max-width:400px;" placeholder="Buscar INEP ou Escola nesta lista..." onkeyup="filterDetailedList()">
-        </div>
-
-        <div class="table-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
-            <table class="data-table" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th style="width: 120px;">INEP</th>
-                        <th>Escola / Identificação</th>
-                        <th style="width: 100px;">Status</th>
-                    </tr>
-                </thead>
-                <tbody id="detailed-list-body">
-                    <tr><td colspan="3" style="text-align:center; padding:24px;">Carregando dados...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
 
     <!-- Modal de Gerenciamento de Agentes -->
     <div id="modal-agents" class="drawer-overlay" style="display:none; align-items:center; justify-content:center; z-index:2000;">
