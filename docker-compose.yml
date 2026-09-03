@@ -26,12 +26,12 @@ services:
       - OMADA_PASSWORD=${OMADA_PASSWORD:-""}
       - OMADA_ST1_EMAIL=${OMADA_ST1_EMAIL:-""}
       - OMADA_ST1_PASSWORD=${OMADA_ST1_PASSWORD:-""}
-      - OMADA_INTERVAL=300
+      - OMADA_INTERVAL=210
       - OMADA_DIR=/app/dados_omada
     volumes:
       - ./omada/dados_omada:/app/dados_omada
       - ./omada/dados_st1:/app/dados_st1_omada
-    command: ["python", "-u", "omada_exporter_cli.py", "--cli", "--interval", "300"]
+    command: ["python", "-u", "omada_exporter_cli.py", "--cli", "--interval", "210"]
 
   # Robô 2: EACE OS Exporter (Baixa a planilha RI do portal EACE e dispara o cruzamento do Unificador)
   eace-os-exporter:
@@ -61,7 +61,7 @@ services:
       - EACE_PASSWORD=${EACE_PASSWORD:-""}
       - EACE_ST1_EMAIL=${EACE_ST1_EMAIL:-""}
       - EACE_ST1_PASSWORD=${EACE_ST1_PASSWORD:-""}
-      - EACE_INTERVAL=${EACE_INTERVAL:-300}
+      - EACE_INTERVAL=${EACE_INTERVAL:-210}
       - ESCOLAS_DB_URL=${ESCOLAS_DB_URL:-""}
     volumes:
       - ./eace/dados_eace:/app/dados_eace
@@ -69,7 +69,7 @@ services:
       - ./omada/dados_omada:/app/omada/dados_omada
       - ./omada/dados_st1:/app/omada/dados_st1
       - ./.streamlit:/app/.streamlit
-    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "300"]
+    command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "210"]
 
   # Site Web (Painel Streamlit)
   streamlit-web:
