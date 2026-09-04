@@ -48,6 +48,8 @@ const els = {
     syncDot: document.querySelector('.sync-dot'),
     syncText: document.getElementById('sync-text'),
     btnRefresh: document.getElementById('btn-refresh'),
+    btnDrawerPrepare: document.getElementById('btn-drawer-prepare'),
+    btnDrawerCopy: document.getElementById('btn-drawer-copy'),
     
     // Novas métricas (Panorama Global)
     kpiTotal: document.getElementById('kpi-total'),
@@ -1084,7 +1086,7 @@ function renderOs() {
         selAgente.value = state.assignments[inep] || '';
         
         selAgente.addEventListener('change', (e) => {
-            saveAssignment(inep, e.target.value);
+            saveAssignment(inep, e.target.value, name);
         });
         
         tdAgente.appendChild(selAgente);
@@ -1284,6 +1286,20 @@ function openDrawer(item) {
     } else {
         els.drawerCad.innerHTML = '<span class="badge badge-success">Sincronizado</span>';
     }
+
+    if (els.btnDrawerPrepare) {
+        els.btnDrawerPrepare.onclick = () => {
+            logActionToHistory('preparar_abertura', inep, name, 'Preparou a abertura do chamado no sistema EACE/RDO');
+        };
+    }
+    
+    if (els.btnDrawerCopy) {
+        els.btnDrawerCopy.onclick = () => {
+            const resumo = `Resumo da Ocorrência:\nEscola: ${name}\nINEP: ${inep}\nLocalidade: ${localidade}\nIP: ${ip}\nRegra: ${rule}`;
+            navigator.clipboard.writeText(resumo);
+            logActionToHistory('copiar_resumo', inep, name, 'Resumo do incidente copiado');
+        };
+    }
 }
 
 function closeDrawer() {
@@ -1323,7 +1339,25 @@ async function fetchAssignments() {
     } catch(e) { console.error("Erro ao carregar atribuições", e); }
 }
 
-async function saveAssignment(inep, agentId) {
+async function logActionToHistory(action, inep, escola, details) {
+    try {
+        await fetch('/api/v1/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+            body: JSON.stringify({
+                action: action,
+                inep: inep,
+                escola: escola,
+                details: details
+            })
+        });
+        if (state.history) fetchHistory();
+    } catch (e) {
+        console.error("Erro ao registrar histórico", e);
+    }
+}
+
+async function saveAssignment(inep, agentId, escola = 'Desconhecida') {
     try {
         await fetch('/api/v1/assignments', {
             method: 'POST',
@@ -1331,6 +1365,16 @@ async function saveAssignment(inep, agentId) {
             body: JSON.stringify({ inep: inep, agent_id: agentId })
         });
         state.assignments[inep] = agentId;
+        
+        let agentName = "Nenhum";
+        if (agentId) {
+            const ag = state.agents.find(a => a.id === agentId);
+            if (ag) agentName = ag.name;
+        }
+        
+        await logActionToHistory('atribuir_agente', inep, escola, `Agente ${agentName} atribuído ao chamado`);
+        
+        if(els.tableIncidents) renderIncidents();
     } catch(e) { console.error("Erro ao salvar atribuição", e); }
 }
 
@@ -1349,18 +1393,9 @@ async function hideTicket(inep, escola = 'N/A', action = 'ocultar_ticket') {
             body: JSON.stringify({ inep: inep })
         });
         
-        // Log history
+        // Log history using helper
         let detailsText = action === 'concluir_recuperacao' ? 'Recuperação concluída' : 'Ticket ocultado';
-        await fetch('/api/v1/history', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
-            body: JSON.stringify({
-                action: action,
-                inep: inep,
-                escola: escola,
-                details: detailsText
-            })
-        });
+        await logActionToHistory(action, inep, escola, detailsText);
         
         state.hiddenTickets[inep] = new Date().toISOString();
         if(els.tableRecoveries) renderRecoveries();
@@ -1446,9 +1481,19 @@ function renderHistory() {
         } else if (log.action === 'desfazer') {
             badge.className = 'badge badge-warning';
             badge.textContent = 'DESFEITO';
+        } else if (log.action === 'preparar_abertura') {
+            badge.className = 'badge badge-critical';
+            badge.textContent = 'ABERTURA';
+        } else if (log.action === 'atribuir_agente') {
+            badge.className = 'badge badge-primary';
+            badge.textContent = 'ATRIBUIÇÃO';
+        } else if (log.action === 'sincronizacao') {
+            badge.className = 'badge badge-neutral';
+            badge.textContent = 'SYNC_BOT';
         } else {
             badge.className = 'badge badge-neutral';
-            badge.textContent = log.action.toUpperCase();
+            let formattedAction = log.action.toUpperCase().replace('_', ' ');
+            badge.textContent = formattedAction;
         }
         tdAcao.appendChild(badge);
         
@@ -1458,13 +1503,15 @@ function renderHistory() {
         const tdDesfazer = document.createElement('td');
         tdDesfazer.style.textAlign = 'center';
         
-        if (log.action !== 'desfazer') {
+        if (log.action !== 'desfazer' && log.action !== 'sincronizacao' && log.action !== 'atribuir_agente' && log.action !== 'preparar_abertura' && log.action !== 'copiar_resumo') {
             const btnUndo = document.createElement('button');
             btnUndo.className = 'btn btn-icon';
             btnUndo.title = 'Desfazer ação e restaurar ticket';
             btnUndo.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>';
             btnUndo.onclick = () => undoAction(log.inep);
             tdDesfazer.appendChild(btnUndo);
+        } else {
+            tdDesfazer.textContent = '-';
         }
         
         tr.appendChild(tdData);

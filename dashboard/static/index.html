@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOC Operations Center</title>
-    <link rel="stylesheet" href="style.css?v=39">
+    <link rel="stylesheet" href="style.css?v=40">
     <!-- SheetJS (Excel) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -433,8 +433,8 @@
             </div>
             
             <div class="flex gap-2" style="margin-top:var(--sp-4); margin-bottom:var(--sp-6)">
-                <button class="btn btn-primary w-full justify-center">Preparar Abertura</button>
-                <button class="btn w-full justify-center">Copiar Resumo</button>
+                <button class="btn btn-primary w-full justify-center" id="btn-drawer-prepare">Preparar Abertura</button>
+                <button class="btn w-full justify-center" id="btn-drawer-copy">Copiar Resumo</button>
             </div>
             
             <h4 class="text-sec" style="text-transform:uppercase; font-size:12px; margin-top:var(--sp-8); margin-bottom:var(--sp-4)">Timeline</h4>
@@ -482,6 +482,6 @@
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";
     </script>
-    <script src="app.js?v=39"></script>
+    <script src="app.js?v=40"></script>
 </body>
 </html>

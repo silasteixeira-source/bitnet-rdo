@@ -696,10 +696,37 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     }
     
     import json
+    import uuid
     try:
         with open(snapshot_path, "w", encoding="utf-8") as f:
             json.dump(snapshot_data, f, ensure_ascii=False, indent=2)
         log(f"✅ Snapshot JSON salvo para o tenant {tenant} em: {snapshot_path}")
+        
+        # Log system event in history.json
+        history_path = os.path.join(os.path.dirname(snapshot_path), "history.json")
+        try:
+            history = []
+            if os.path.exists(history_path):
+                with open(history_path, "r", encoding="utf-8") as hf:
+                    history = json.load(hf)
+            
+            new_log = {
+                "id": str(uuid.uuid4()),
+                "action": "sincronizacao",
+                "inep": "SISTEMA",
+                "escola": "Atualização Automática",
+                "details": f"Dados sincronizados. {len(snapshot_data.get('falta_abrir', []))} offline.",
+                "timestamp": datetime.now().isoformat()
+            }
+            history.insert(0, new_log)
+            if len(history) > 500:
+                history = history[:500]
+                
+            with open(history_path, "w", encoding="utf-8") as hf:
+                json.dump(history, hf, ensure_ascii=False, indent=2)
+        except Exception as e_hist:
+            log(f"⚠️ Erro ao salvar histórico do sistema: {e_hist}")
+            
     except Exception as e:
         log(f"❌ Erro ao salvar snapshot JSON: {e}")
 
