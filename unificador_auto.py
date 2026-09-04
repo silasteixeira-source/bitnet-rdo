@@ -405,10 +405,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     df_ja_aberto = df_validos[mask_tem_chamado].copy()
 
     # Avaliando Regra de Abertura (4 horas offline)
-    dt_todos = pd.to_datetime(df_new[status_new].astype(str).str.extract(r'(?i)Uptime:\s*(.*)')[0], errors='coerce')
-    ref_time = dt_todos.max()
-    if pd.isna(ref_time):
-        ref_time = pd.Timestamp.now()
+    ref_time = pd.Timestamp.now()
 
     def avaliar_regra_4h(val_status):
         dt_str = pd.Series([str(val_status)]).str.extract(r'(?i)Uptime:\s*(.*)')[0].iloc[0]
