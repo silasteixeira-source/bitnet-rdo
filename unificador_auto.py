@@ -703,7 +703,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         log(f"✅ Snapshot JSON salvo para o tenant {tenant} em: {snapshot_path}")
         
         # Log system event in history.json
-        history_path = os.path.join(os.path.dirname(snapshot_path), "history.json")
+        history_path = os.path.join(os.path.dirname(os.path.dirname(snapshot_path)), "history.json")
         try:
             history = []
             if os.path.exists(history_path):
