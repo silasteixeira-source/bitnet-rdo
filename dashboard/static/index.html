@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NOC Operations Center</title>
-    <link rel="stylesheet" href="style.css?v=38">
+    <link rel="stylesheet" href="style.css?v=39">
     <!-- SheetJS (Excel) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -332,11 +332,30 @@
                 </div>
             </div>
             
-            <div class="view" id="view-history">
-                <div class="empty-state">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                    <h2>Histórico de Operações</h2>
-                    <p>Esta funcionalidade será ativada na próxima fase de desenvolvimento.</p>
+            <div class="view" id="view-history" style="padding: 24px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
+                    <h2 style="margin:0; font-size:1.5rem;">Histórico de Operações</h2>
+                    <button class="btn" onclick="fetchHistory()" style="display:flex; align-items:center; gap:8px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Atualizar Histórico
+                    </button>
+                </div>
+                
+                <div class="table-container" style="max-height: calc(100vh - 150px); overflow-y: auto;">
+                    <table class="data-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 150px;">Data / Hora</th>
+                                <th>Escola / INEP</th>
+                                <th style="width: 150px;">Ação</th>
+                                <th>Detalhes</th>
+                                <th style="width: 100px; text-align:center;">Desfazer</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-history-body">
+                            <tr><td colspan="5" style="text-align:center; padding:24px;">Carregando histórico...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -463,6 +482,6 @@
     <script>
         window.NOC_API_KEY = "{{ NOC_API_KEY }}";
     </script>
-    <script src="app.js?v=38"></script>
+    <script src="app.js?v=39"></script>
 </body>
 </html>

@@ -21,6 +21,12 @@ class Assignment(BaseModel):
 class HiddenTicket(BaseModel):
     inep: str
 
+class HistoryLog(BaseModel):
+    action: str
+    inep: str
+    escola: str
+    details: str = ""
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -136,6 +142,42 @@ def add_hidden_ticket(ticket: HiddenTicket, x_api_key: str = Depends(verify_api_
     hidden[ticket.inep] = datetime.datetime.now().isoformat()
     write_json_db("hidden_tickets.json", hidden)
     return {"status": "ok", "inep": ticket.inep}
+
+@app.delete("/api/v1/hidden_tickets/{inep}")
+def remove_hidden_ticket(inep: str, x_api_key: str = Depends(verify_api_key)):
+    hidden = read_json_db("hidden_tickets.json", default={})
+    if inep in hidden:
+        del hidden[inep]
+        write_json_db("hidden_tickets.json", hidden)
+    return {"status": "ok"}
+
+@app.get("/api/v1/history")
+def get_history(x_api_key: str = Depends(verify_api_key)):
+    history = read_json_db("history.json", default=[])
+    return history
+
+@app.post("/api/v1/history")
+def add_history(log: HistoryLog, x_api_key: str = Depends(verify_api_key)):
+    history = read_json_db("history.json", default=[])
+    
+    new_log = {
+        "id": str(uuid.uuid4()),
+        "action": log.action,
+        "inep": log.inep,
+        "escola": log.escola,
+        "details": log.details,
+        "timestamp": datetime.datetime.now().isoformat()
+    }
+    
+    # Inserir no topo da lista (mais recente primeiro)
+    history.insert(0, new_log)
+    
+    # Manter no máximo 500 registros para não pesar
+    if len(history) > 500:
+        history = history[:500]
+        
+    write_json_db("history.json", history)
+    return new_log
 
 @app.get("/api/v1/dashboard")
 def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):

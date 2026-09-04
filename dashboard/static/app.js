@@ -19,7 +19,8 @@ const state = {
     currentView: 'view-overview',
     agents: [],
     assignments: {},
-    hiddenTickets: {}
+    hiddenTickets: {},
+    history: []
 };
 
 // DOM Elements
@@ -120,7 +121,8 @@ async function init() {
     }
     await fetchAgents();
     await fetchAssignments();
-    await fetchHiddenTickets();
+    fetchHiddenTickets();
+    fetchHistory();
     setupEventListeners();
     setupAgentsListeners();
     fetchData();
@@ -556,6 +558,8 @@ function updateUI() {
         renderRecoveries();
     } else if(state.currentView === 'view-detailed-lists') {
         renderDetailedList(currentDetailedListType || 'online');
+    } else if(state.currentView === 'view-history') {
+        window.renderHistory();
     }
 }
 
@@ -1195,7 +1199,7 @@ function renderRecoveries() {
         btnConcluir.disabled = true;
         btnConcluir.style.opacity = '0.5';
         btnConcluir.style.cursor = 'not-allowed';
-        btnConcluir.onclick = () => hideTicket(inep);
+        btnConcluir.onclick = () => hideTicket(inep, name, 'concluir_recuperacao');
 
         const btnLock = document.createElement('button');
         btnLock.className = 'btn btn-icon';
@@ -1337,16 +1341,140 @@ async function fetchHiddenTickets() {
     } catch(e) { console.error("Erro ao carregar tickets ocultos", e); }
 }
 
-async function hideTicket(inep) {
+async function hideTicket(inep, escola = 'N/A', action = 'ocultar_ticket') {
     try {
         await fetch('/api/v1/hidden_tickets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
             body: JSON.stringify({ inep: inep })
         });
+        
+        // Log history
+        let detailsText = action === 'concluir_recuperacao' ? 'Recuperação concluída' : 'Ticket ocultado';
+        await fetch('/api/v1/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+            body: JSON.stringify({
+                action: action,
+                inep: inep,
+                escola: escola,
+                details: detailsText
+            })
+        });
+        
         state.hiddenTickets[inep] = new Date().toISOString();
         if(els.tableRecoveries) renderRecoveries();
+        if(els.tableIncidents) renderIncidents();
+        
+        // Refresh history if already loaded
+        if (state.history) {
+            fetchHistory();
+        }
     } catch(e) { console.error("Erro ao ocultar ticket", e); }
+}
+
+async function undoAction(inep) {
+    try {
+        await fetch(`/api/v1/hidden_tickets/${inep}`, {
+            method: 'DELETE',
+            headers: { 'x-api-key': window.NOC_API_KEY }
+        });
+        
+        await fetch('/api/v1/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+            body: JSON.stringify({
+                action: 'desfazer',
+                inep: inep,
+                escola: 'Ação Desfeita',
+                details: `Ticket ${inep} restaurado`
+            })
+        });
+        
+        delete state.hiddenTickets[inep];
+        
+        if(els.tableRecoveries) renderRecoveries();
+        if(els.tableIncidents) renderIncidents();
+        fetchHistory();
+    } catch(e) { console.error("Erro ao desfazer ação", e); }
+}
+
+async function fetchHistory() {
+    try {
+        const tbody = document.getElementById('table-history-body');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px;">Atualizando histórico...</td></tr>`;
+        
+        const res = await fetch('/api/v1/history', { headers: { 'x-api-key': window.NOC_API_KEY } });
+        if (res.ok) {
+            state.history = await res.json();
+            if (state.currentView === 'view-history') renderHistory();
+        }
+    } catch(e) { console.error("Erro ao buscar histórico", e); }
+}
+
+function renderHistory() {
+    const tbody = document.getElementById('table-history-body');
+    if(!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if(!state.history || state.history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px;">O histórico está vazio.</td></tr>`;
+        return;
+    }
+    
+    state.history.forEach(log => {
+        const tr = document.createElement('tr');
+        
+        const dateObj = new Date(log.timestamp);
+        const dataStr = dateObj.toLocaleDateString('pt-BR') + ' ' + dateObj.toLocaleTimeString('pt-BR');
+        
+        const tdData = document.createElement('td');
+        tdData.style.fontSize = '12px';
+        tdData.style.color = 'var(--text-ter)';
+        tdData.textContent = dataStr;
+        
+        const tdEscola = document.createElement('td');
+        tdEscola.innerHTML = `<span style="font-weight:500;">${log.escola}</span><br><span style="font-size:12px; font-family:monospace; color:var(--text-ter)">${log.inep}</span>`;
+        
+        const tdAcao = document.createElement('td');
+        const badge = document.createElement('span');
+        
+        if (log.action === 'concluir_recuperacao') {
+            badge.className = 'badge badge-success';
+            badge.textContent = 'CONCLUÍDO';
+        } else if (log.action === 'desfazer') {
+            badge.className = 'badge badge-warning';
+            badge.textContent = 'DESFEITO';
+        } else {
+            badge.className = 'badge badge-neutral';
+            badge.textContent = log.action.toUpperCase();
+        }
+        tdAcao.appendChild(badge);
+        
+        const tdDetalhes = document.createElement('td');
+        tdDetalhes.textContent = log.details;
+        
+        const tdDesfazer = document.createElement('td');
+        tdDesfazer.style.textAlign = 'center';
+        
+        if (log.action !== 'desfazer') {
+            const btnUndo = document.createElement('button');
+            btnUndo.className = 'btn btn-icon';
+            btnUndo.title = 'Desfazer ação e restaurar ticket';
+            btnUndo.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>';
+            btnUndo.onclick = () => undoAction(log.inep);
+            tdDesfazer.appendChild(btnUndo);
+        }
+        
+        tr.appendChild(tdData);
+        tr.appendChild(tdEscola);
+        tr.appendChild(tdAcao);
+        tr.appendChild(tdDetalhes);
+        tr.appendChild(tdDesfazer);
+        
+        tbody.appendChild(tr);
+    });
 }
 
 function setupAgentsListeners() {
