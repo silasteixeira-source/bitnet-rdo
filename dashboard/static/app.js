@@ -1187,12 +1187,38 @@ function renderRecoveries() {
 
         const btnConcluir = document.createElement('button');
         btnConcluir.className = 'btn';
-        btnConcluir.style.marginLeft = '8px';
+        btnConcluir.style.marginLeft = '4px';
         btnConcluir.style.backgroundColor = 'var(--status-success)';
         btnConcluir.style.color = '#fff';
         btnConcluir.style.borderColor = 'var(--status-success)';
         btnConcluir.textContent = 'Concluir';
+        btnConcluir.disabled = true;
+        btnConcluir.style.opacity = '0.5';
+        btnConcluir.style.cursor = 'not-allowed';
         btnConcluir.onclick = () => hideTicket(inep);
+
+        const btnLock = document.createElement('button');
+        btnLock.className = 'btn btn-icon';
+        btnLock.style.marginLeft = '8px';
+        btnLock.title = 'Destravar botão de concluir';
+        btnLock.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+        btnLock.onclick = () => {
+            if (btnConcluir.disabled) {
+                btnConcluir.disabled = false;
+                btnConcluir.style.opacity = '1';
+                btnConcluir.style.cursor = 'pointer';
+                btnLock.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--status-ok)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>';
+                btnLock.title = 'Travar botão';
+            } else {
+                btnConcluir.disabled = true;
+                btnConcluir.style.opacity = '0.5';
+                btnConcluir.style.cursor = 'not-allowed';
+                btnLock.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>';
+                btnLock.title = 'Destravar botão de concluir';
+            }
+        };
+
+        tdAcao.appendChild(btnLock);
         tdAcao.appendChild(btnConcluir);
         
         tr.appendChild(tdTicket);
