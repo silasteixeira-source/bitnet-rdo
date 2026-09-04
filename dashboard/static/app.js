@@ -19,7 +19,7 @@ const state = {
     agents: [],
     assignments: {},
     hiddenTickets: {},
-    lockedTickets: {},
+    lockedTickets: JSON.parse(localStorage.getItem('nocLockedTickets') || '{}'),
     history: []
 };
 
@@ -1229,6 +1229,7 @@ function renderRecoveries() {
             if (btnConcluir.disabled) {
                 // Unlock
                 state.lockedTickets[inep] = false;
+                localStorage.setItem('nocLockedTickets', JSON.stringify(state.lockedTickets));
                 btnConcluir.disabled = false;
                 btnConcluir.style.opacity = '1';
                 btnConcluir.style.cursor = 'pointer';
@@ -1237,6 +1238,7 @@ function renderRecoveries() {
             } else {
                 // Lock
                 state.lockedTickets[inep] = true;
+                localStorage.setItem('nocLockedTickets', JSON.stringify(state.lockedTickets));
                 btnConcluir.disabled = true;
                 btnConcluir.style.opacity = '0.5';
                 btnConcluir.style.cursor = 'not-allowed';
