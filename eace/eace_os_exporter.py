@@ -76,7 +76,7 @@ class EACEOSExporter:
         self.log("Inicializando Google Chrome / Chromium...")
         opts = Options()
         if self.headless:
-            opts.add_argument("--headless=new")
+            opts.add_argument("--headless")
         opts.add_argument("--disable-gpu")
         opts.add_argument("--no-sandbox")
         opts.add_argument("--disable-dev-shm-usage")
@@ -114,7 +114,9 @@ class EACEOSExporter:
         }
         opts.add_experimental_option("prefs", prefs)
 
-        self.driver = webdriver.Chrome(options=opts)
+        from selenium.webdriver.chrome.service import Service
+        service = Service(executable_path='/usr/bin/chromedriver')
+        self.driver = webdriver.Chrome(service=service, options=opts)
         self.driver.implicitly_wait(10)
 
     def login_e_navegar(self):

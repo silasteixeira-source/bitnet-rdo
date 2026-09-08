@@ -241,7 +241,7 @@ class OmadaExporter:
         opts.add_argument("--disk-cache-size=1")
         opts.add_argument("--window-size=1280,720")
         opts.add_argument("--disable-infobars")
-        opts.add_argument("--headless=new") # Usar novo modo headless estável do Chromium moderno
+        opts.add_argument("--headless") # Modo headless padrão
 
         # Preferências de download e segurança
         opts.add_experimental_option("prefs", {
@@ -256,7 +256,9 @@ class OmadaExporter:
             "profile.content_settings.exceptions.automatic_downloads.*.setting": 1
         })
 
-        self.driver = webdriver.Chrome(options=opts)
+        from selenium.webdriver.chrome.service import Service
+        service = Service(executable_path='/usr/bin/chromedriver')
+        self.driver = webdriver.Chrome(service=service, options=opts)
         self.driver.implicitly_wait(15)
         # self.driver.maximize_window() # Não faz sentido em modo headless
         self._log("Browser Chrome inicializado (modo headless).")
