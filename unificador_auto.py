@@ -482,8 +482,12 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             df_os_abertos[cols_existentes], 
             left_on='INEP_Extraido', 
             right_on='INEP', 
-            how='left'
+            how='left',
+            suffixes=('', '_drop')
         )
+        drop_cols = [c for c in df_merged.columns if c.endswith('_drop')]
+        df_merged.drop(columns=['INEP'] + drop_cols, inplace=True, errors='ignore')
+            
         if 'Ticket#' in df_merged.columns:
             df_merged.rename(columns={'Ticket#': 'Ticket'}, inplace=True)
             
@@ -491,7 +495,6 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             df_merged['Dias em Aberto'] = pd.to_numeric(df_merged[col_dias], errors='coerce').fillna(0).apply(lambda x: f"{x:.1f}")
             df_merged.drop(columns=[col_dias], inplace=True, errors='ignore')
             
-        df_merged.drop(columns=['INEP'], inplace=True, errors='ignore')
         return df_merged
 
     df_ja_aberto = merge_os_data(df_ja_aberto, df_os_abertos)
