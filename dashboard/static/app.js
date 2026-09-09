@@ -1665,9 +1665,12 @@ window.renderDetailedList = function(type) {
 };
 
 window.filterDetailedList = function() {
-    const list = detailedListData[currentDetailedListType] || [];
     const searchInput = document.getElementById('detailed-search-input');
-    const search = searchInput ? searchInput.value.toLowerCase() : '';
+    const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    
+    // Se estiver pesquisando, busca em toda a base de dados (tudo)
+    // Se o campo estiver vazio, mostra apenas a lista da aba atual
+    const list = (search !== '') ? (detailedListData['tudo'] || []) : (detailedListData[currentDetailedListType] || []);
     
     const filtered = list.filter(item => {
         const inep = String(item.INEP_Extraido || item.INEP || '').toLowerCase();
