@@ -1037,7 +1037,7 @@ function renderOs() {
         list = list.filter(item => {
             const inep = (item['INEP_Extraido'] || item['INEP'] || '').toString().toLowerCase();
             const esc = (item['Nome da Escola'] || item['Escola'] || item['NAME'] || item['Nome'] || '').toLowerCase();
-            const ticket = (item['Ticket#'] || '').toString().toLowerCase();
+            const ticket = (item['Ticket'] || item['Ticket#'] || '').toString().toLowerCase();
             const status = (item['Status'] || '').toLowerCase();
             return inep.includes(q) || esc.includes(q) || ticket.includes(q) || status.includes(q);
         });
@@ -1053,6 +1053,7 @@ function renderOs() {
     list.forEach(item => {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
+        const ticket = item['Ticket'] || item['Ticket#'] || 'S/N';
         const status = getStatusFromOsItem(item);
         
         const nameField = item['NAME'] || item['Nome'] || '';
@@ -1091,6 +1092,12 @@ function renderOs() {
         
         tdAgente.appendChild(selAgente);
         
+        const tdTicket = document.createElement('td');
+        const badgeTicket = document.createElement('span');
+        badgeTicket.className = 'badge badge-warning';
+        badgeTicket.textContent = ticket;
+        tdTicket.appendChild(badgeTicket);
+        
         const tdStatus = document.createElement('td');
         tdStatus.textContent = status;
         
@@ -1114,6 +1121,7 @@ function renderOs() {
         tdAcao.appendChild(btn);
         
         tr.appendChild(tdAgente);
+        tr.appendChild(tdTicket);
         tr.appendChild(tdStatus);
         tr.appendChild(tdEscola);
         tr.appendChild(tdLoc);
@@ -1146,7 +1154,7 @@ function renderRecoveries() {
     list.forEach(item => {
         const inep = item['INEP_Extraido'] || item['INEP'] || '-';
         const name = item['Nome da Escola'] || item['Escola'] || 'Desconhecida';
-        const ticket = item['Ticket#'] || 'S/N';
+            const ticket = item['Ticket'] || item['Ticket#'] || 'S/N';
         
         const nameField = item['NAME'] || item['Nome'] || '';
         let localidade = '-';
