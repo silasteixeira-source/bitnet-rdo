@@ -1620,14 +1620,17 @@ function renderAgentsList() {
 document.addEventListener('DOMContentLoaded', init);
 
 // --- Detalhamento de Registros ---
-let detailedListData = { online: [], offline: [], ignorados: [] };
-window.currentDetailedListType = 'online';
+let detailedListData = { tudo: [], online: [], offline: [], ignorados: [] };
+window.currentDetailedListType = 'tudo';
 
 function updateDetailedListsData(data) {
-    detailedListData.online = data.list_online || [];
-    detailedListData.offline = data.list_offline || [];
-    detailedListData.ignorados = data.list_ignorados || [];
+    detailedListData.online = (data.list_online || []).map(i => ({...i, _category: 'ONLINE'}));
+    detailedListData.offline = (data.list_offline || []).map(i => ({...i, _category: 'OFFLINE'}));
+    detailedListData.ignorados = (data.list_ignorados || []).map(i => ({...i, _category: 'IGNORADO'}));
+    detailedListData.tudo = [...detailedListData.online, ...detailedListData.offline, ...detailedListData.ignorados];
     
+    const ct = document.getElementById('count-list-tudo');
+    if(ct) ct.textContent = detailedListData.tudo.length;
     const co = document.getElementById('count-list-online');
     if(co) co.textContent = detailedListData.online.length;
     const cf = document.getElementById('count-list-offline');
@@ -1644,7 +1647,7 @@ window.renderDetailedList = function(type) {
     currentDetailedListType = type;
     
     // Update button styles
-    const btns = ['online', 'offline', 'ignorados'];
+    const btns = ['tudo', 'online', 'offline', 'ignorados'];
     btns.forEach(b => {
         const btn = document.getElementById('btn-list-' + b);
         if(btn) {
@@ -1683,14 +1686,28 @@ window.filterDetailedList = function() {
     tbody.innerHTML = filtered.map(item => {
         const inep = item.INEP_Extraido || item.INEP || '-';
         const nome = item.NAME || item.NOME || item.Nome || item.Escola || 'Sem nome';
-        const status = item.STATUS || item.Estatuto || item.ESTATUTO || (currentDetailedListType === 'offline' ? 'OFFLINE' : (currentDetailedListType === 'online' ? 'ONLINE' : '-'));
-        const statusColor = status.toUpperCase().includes('OFFLINE') ? 'var(--status-critical)' : (status.toUpperCase().includes('ONLINE') ? 'var(--status-ok)' : 'var(--text-sec)');
+        
+        let status = item.STATUS || item.Estatuto || item.ESTATUTO || item._category || '-';
+        let badgeStyle = '';
+        
+        if (status.toUpperCase().includes('OFFLINE')) {
+            badgeStyle = 'background: var(--status-critical)20; color: var(--status-critical)';
+        } else if (status.toUpperCase().includes('ONLINE')) {
+            badgeStyle = 'background: var(--status-ok)20; color: var(--status-ok)';
+        } else {
+            badgeStyle = 'background: var(--border-strong); color: white';
+        }
+        
+        const isIgnorado = item._category === 'IGNORADO';
         
         return `
             <tr class="table-row">
-                <td style="font-family: monospace; color: var(--text-sec);">${inep}</td>
+                <td style="font-family: monospace; color: var(--text-sec);">
+                    ${inep}
+                    ${isIgnorado ? '<br><span style="font-size:10px; color:var(--text-sec);">⚠️ Não RDO</span>' : ''}
+                </td>
                 <td style="font-weight: 500;">${nome}</td>
-                <td><span class="badge" style="background:${statusColor}20; color:${statusColor}">${status}</span></td>
+                <td><span class="badge" style="${badgeStyle}">${status}</span></td>
             </tr>
         `;
     }).join('');

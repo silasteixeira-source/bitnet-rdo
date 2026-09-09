@@ -372,7 +372,8 @@
                             </svg>
                             Acessar Nuvem TP-Link
                         </a>
-                        <button class="btn btn-primary" id="btn-list-online" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
+                        <button class="btn btn-primary" id="btn-list-tudo" onclick="renderDetailedList('tudo')" style="background: var(--brand-main);">Tudo (<span id="count-list-tudo">0</span>)</button>
+                        <button class="btn" id="btn-list-online" style="background:var(--status-ok); color:white; border:none;" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
                         <button class="btn" id="btn-list-offline" style="background:var(--status-critical); color:white; border:none;" onclick="renderDetailedList('offline')">Offline (<span id="count-list-offline">0</span>)</button>
                         <button class="btn" id="btn-list-ignorados" style="background:var(--border-strong); color:white; border:none;" onclick="renderDetailedList('ignorados')">Ignorados (<span id="count-list-ignorados">0</span>)</button>
                     </div>
