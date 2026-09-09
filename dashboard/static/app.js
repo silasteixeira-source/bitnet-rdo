@@ -360,6 +360,8 @@ function switchView(viewId) {
         renderOs();
     } else if(viewId === 'view-recoveries') {
         renderRecoveries();
+    } else if(viewId === 'view-omada') {
+        renderDetailedList(currentDetailedListType || 'online');
     }
 }
 
@@ -559,7 +561,7 @@ function updateUI() {
         renderOs();
     } else if(state.currentView === 'view-recoveries') {
         renderRecoveries();
-    } else if(state.currentView === 'view-detailed-lists') {
+    } else if(state.currentView === 'view-omada') {
         renderDetailedList(currentDetailedListType || 'online');
     } else if(state.currentView === 'view-history') {
         window.renderHistory();
@@ -1633,7 +1635,7 @@ function updateDetailedListsData(data) {
     const ci = document.getElementById('count-list-ignorados');
     if(ci) ci.textContent = detailedListData.ignorados.length;
     
-    if (state.currentView === 'view-detailed-lists') {
+    if (state.currentView === 'view-omada') {
         renderDetailedList(currentDetailedListType);
     }
 }
@@ -1665,8 +1667,8 @@ window.filterDetailedList = function() {
     const search = searchInput ? searchInput.value.toLowerCase() : '';
     
     const filtered = list.filter(item => {
-        const inep = String(item.INEP_Extraido || '').toLowerCase();
-        const nome = String(item.NAME || item.Escola || '').toLowerCase();
+        const inep = String(item.INEP_Extraido || item.INEP || '').toLowerCase();
+        const nome = String(item.NAME || item.NOME || item.Nome || item.Escola || '').toLowerCase();
         return inep.includes(search) || nome.includes(search);
     });
     
@@ -1679,9 +1681,9 @@ window.filterDetailedList = function() {
     }
     
     tbody.innerHTML = filtered.map(item => {
-        const inep = item.INEP_Extraido || '-';
-        const nome = item.NAME || item.Escola || 'Sem nome';
-        const status = item.STATUS || (currentDetailedListType === 'offline' ? 'OFFLINE' : (currentDetailedListType === 'online' ? 'ONLINE' : '-'));
+        const inep = item.INEP_Extraido || item.INEP || '-';
+        const nome = item.NAME || item.NOME || item.Nome || item.Escola || 'Sem nome';
+        const status = item.STATUS || item.Estatuto || item.ESTATUTO || (currentDetailedListType === 'offline' ? 'OFFLINE' : (currentDetailedListType === 'online' ? 'ONLINE' : '-'));
         const statusColor = status.toUpperCase().includes('OFFLINE') ? 'var(--status-critical)' : (status.toUpperCase().includes('ONLINE') ? 'var(--status-ok)' : 'var(--text-sec)');
         
         return `
