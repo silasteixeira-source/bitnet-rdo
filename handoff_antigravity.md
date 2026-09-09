@@ -24,7 +24,10 @@ Este documento contém o contexto essencial do projeto para que o próximo chat 
    - Foi confirmado via script de mock local que a planilha real (`controle_os_ri.xlsx`) **POSSUI** sim os tickets (Ex: INEP 22088008 tem o ticket 20260036809) e que a lógica do Pandas no `unificador_auto.py` consegue mesclar e injetar esse número perfeitamente no dicionário JSON.
    - *Ação recomendada para o novo chat:* Como a lógica do Pandas está 100% perfeita e os dados existem na planilha, a única razão para o frontend continuar mostrando "S/N" é que o novo JSON `bitnet.json` **não está sendo gerado/atualizado** pelo robô no ambiente de produção. O foco imediato deve ser analisar os logs do container (`docker compose logs --tail 50 rdo_eace_os_exporter`) para ver se o `unificador_auto.py` está sofrendo algum *crash* silencioso antes de salvar o arquivo JSON.
 ## 3. Próximas Implementações Pendentes (Backlog)
-- **APK/PWA do Painel:** O usuário solicitou recentemente a possibilidade de transformar o dashboard em um APK para Android ou PWA (Progressive Web App). Isso deve ser planejado assim que a UI estiver 100% estabilizada.
+- **APK/PWA do Painel Omada:**
+  - **Como será criado:** Vamos transformar o NOC Dashboard atual em um PWA (Progressive Web App) injetando um arquivo `manifest.json` e registrando um `service-worker.js`. Depois, o PWA será empacotado em um APK (Android) utilizando tecnologias de *Trusted Web Activity* (como o PWABuilder) ou um wrapper leve em WebView.
+  - **De onde pegará os arquivos:** O APK servirá apenas como uma "casca" que consumirá as rotas e arquivos servidos pelo nosso container principal `noc-dashboard` (FastAPI) hospedado no servidor/VPS do NOC.
+  - **Estratégia de Cache:** O `service-worker.js` salvará no cache nativo do celular (Cache Storage) apenas a interface (*App Shell*: `index.html`, `app.js`, CSS e ícones). Os dados vitais dos chamados e O.S (`bitnet.json`, etc) usarão uma estratégia *Network First* — ele sempre tentará buscar os dados mais frescos via `/api/snapshots` e, apenas se o celular estiver sem internet, exibirá o último JSON visto.
 - **Remoção da coluna "Causa" (Concluído):** A coluna Causa foi removida do HTML e do `renderRecoveries()` na tela de "Recuperações", mas preservada na tela "OS em Andamento". A UI já reflete isso.
 
 ## 4. Dicas e Infraestrutura (Docker)
