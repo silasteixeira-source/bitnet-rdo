@@ -705,7 +705,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     import uuid
     try:
         with open(snapshot_path, "w", encoding="utf-8") as f:
-            json.dump(snapshot_data, f, ensure_ascii=False, indent=2)
+            json.dump(snapshot_data, f, ensure_ascii=False, indent=2, default=str)
         log(f"✅ Snapshot JSON salvo para o tenant {tenant} em: {snapshot_path}")
         
         # Log system event in history.json
