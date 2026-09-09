@@ -9,8 +9,8 @@ Este documento contém o contexto essencial do projeto para que o próximo chat 
   - `rdo_eace_os_exporter` (Container): Baixa a planilha de chamados do portal EACE via Selenium e dispara o script central `unificador_auto.py`.
 - **Motor Central (`unificador_auto.py`):** Cruza os dados de escolas offline (do Omada) com os chamados abertos (do EACE). Ele formata os dados e gera um arquivo JSON de snapshot em `.streamlit/snapshots/<tenant>.json` (Ex: `bitnet.json`).
 - **Dashboards (O projeto roda dois painéis simultâneos):** 
-  1. **NOC Dashboard / Painel da NASA (`noc-dashboard`):** É o painel moderno (FastAPI + JS Vanilla) que estamos faturando e corrigindo o bug do S/N. O backend (`dashboard/api.py`) lê os snapshots JSON e o frontend (`dashboard/static/app.js`) renderiza a UI.
-  2. **Site Web Clássico (`streamlit-web`):** Um painel secundário feito em Streamlit rodando na porta 8501. Ele compartilha a mesma pasta de volumes (`.streamlit`) mas a nossa prioridade de customização de UI é o Painel da NASA.
+  1. **NOC Dashboard / Painel Omada da NASA (`noc-dashboard`):** É a implementação principal do "Painel Omada" (FastAPI + JS Vanilla) que centraliza a visão das escolas offline da Omada cruzadas com a EACE. É onde estamos atuando e corrigindo o bug do S/N. O backend (`dashboard/api.py`) lê os snapshots JSON e o frontend (`dashboard/static/app.js`) renderiza a UI.
+  2. **Site Web Clássico (`streamlit-web`):** Um painel secundário feito em Streamlit rodando na porta 8501. Ele compartilha a mesma pasta de volumes (`.streamlit`) mas a nossa prioridade de customização de UI é o Painel Omada da NASA.
 ## 2. O Bug Atual a Ser Resolvido (Coluna Ticket "S/N")
 **Sintoma:** Na tela de **"OS em Andamento"** no dashboard, a coluna "Ticket" insiste em exibir **S/N** (Sem Número), mesmo após o frontend já ter sido mapeado para ler `item['Ticket']` ou `item['Ticket#']`. 
 
