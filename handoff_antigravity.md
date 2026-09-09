@@ -8,10 +8,9 @@ Este documento contém o contexto essencial do projeto para que o próximo chat 
   - `rdo_omada_exporter_st1` (Container): Coleta dados do portal Omada ST1.
   - `rdo_eace_os_exporter` (Container): Baixa a planilha de chamados do portal EACE via Selenium e dispara o script central `unificador_auto.py`.
 - **Motor Central (`unificador_auto.py`):** Cruza os dados de escolas offline (do Omada) com os chamados abertos (do EACE). Ele formata os dados e gera um arquivo JSON de snapshot em `.streamlit/snapshots/<tenant>.json` (Ex: `bitnet.json`).
-- **Dashboard Frontend (FastAPI + JS Vanilla):** 
-  - Backend: `dashboard/api.py` serve os endpoints da API (lendo os snapshots JSON).
-  - Frontend: `dashboard/static/index.html` e `dashboard/static/app.js` renderizam as tabelas e UI.
-
+- **Dashboards (O projeto roda dois painéis simultâneos):** 
+  1. **NOC Dashboard / Painel da NASA (`noc-dashboard`):** É o painel moderno (FastAPI + JS Vanilla) que estamos faturando e corrigindo o bug do S/N. O backend (`dashboard/api.py`) lê os snapshots JSON e o frontend (`dashboard/static/app.js`) renderiza a UI.
+  2. **Site Web Clássico (`streamlit-web`):** Um painel secundário feito em Streamlit rodando na porta 8501. Ele compartilha a mesma pasta de volumes (`.streamlit`) mas a nossa prioridade de customização de UI é o Painel da NASA.
 ## 2. O Bug Atual a Ser Resolvido (Coluna Ticket "S/N")
 **Sintoma:** Na tela de **"OS em Andamento"** no dashboard, a coluna "Ticket" insiste em exibir **S/N** (Sem Número), mesmo após o frontend já ter sido mapeado para ler `item['Ticket']` ou `item['Ticket#']`. 
 
