@@ -384,6 +384,12 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     log("3/4 - Cruzando com Controle de OS (EACE)...")
     df_os = pd.read_excel(os_path)
     
+    # Normalizar o nome da coluna do Ticket, caso tenha mudado no portal EACE
+    for col in df_os.columns:
+        if 'ticket' in str(col).lower() and str(col) != 'Ticket#':
+            df_os.rename(columns={col: 'Ticket#'}, inplace=True)
+            break
+            
     os_map = {}
     for _, row in df_os.iterrows():
         inep = str(row.get('INEP', '')).strip().replace('.0', '')
