@@ -38,10 +38,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                 <span>Recuperações</span>
             </a>
-            <a class="nav-item" data-target="view-detailed-lists" tabindex="0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                <span>Detalhamento de Registros</span>
-            </a>
+
             <a class="nav-item" data-target="view-omada" tabindex="0">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
                 <span>Portal Omada</span>
@@ -350,14 +347,28 @@
                             <tr><td colspan="5" style="text-align:center; padding:24px;">Carregando histórico...</td></tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- View: Detalhamento de Registros -->
-            <div class="view" id="view-detailed-lists" style="padding: 24px;">
+                     <!-- View: Portal Omada -->
+            <div class="view" id="view-omada" style="padding: 24px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
-                    <h2 style="margin:0; font-size:1.5rem;">Detalhamento de Equipamentos</h2>
+                    <div>
+                        <h2 style="margin:0; font-size:1.5rem; display:flex; align-items:center; gap:8px;">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--brand-active)" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                <path d="M2 17l10 5 10-5"></path>
+                                <path d="M2 12l10 5 10-5"></path>
+                            </svg>
+                            Portal Omada
+                        </h2>
+                    </div>
                     <div style="display:flex; gap: 8px;">
+                        <a href="https://omada.tplinkcloud.com/" target="_blank" class="btn" style="background:transparent; border:1px solid var(--border-color); color:var(--text-main); text-decoration:none; display:flex; align-items:center; gap:6px; margin-right: 16px;">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                            Acessar Nuvem TP-Link
+                        </a>
                         <button class="btn btn-primary" id="btn-list-online" onclick="renderDetailedList('online')">Online (<span id="count-list-online">0</span>)</button>
                         <button class="btn" id="btn-list-offline" style="background:var(--status-critical); color:white; border:none;" onclick="renderDetailedList('offline')">Offline (<span id="count-list-offline">0</span>)</button>
                         <button class="btn" id="btn-list-ignorados" style="background:var(--border-strong); color:white; border:none;" onclick="renderDetailedList('ignorados')">Ignorados (<span id="count-list-ignorados">0</span>)</button>
@@ -381,30 +392,6 @@
                             <tr><td colspan="3" style="text-align:center; padding:24px;">Carregando dados...</td></tr>
                         </tbody>
                     </table>
-            <!-- View: Portal Omada -->
-            <div class="view" id="view-omada" style="padding: 24px; height: 100%; display: flex; flex-direction: column;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;">
-                    <h2 style="margin:0; font-size:1.5rem;">Integração Omada</h2>
-                </div>
-                
-                <div class="panel" style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                    <svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="var(--brand-active)" stroke-width="2" style="margin-bottom: 16px;">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-                        <path d="M2 17l10 5 10-5"></path>
-                        <path d="M2 12l10 5 10-5"></path>
-                    </svg>
-                    <h3 style="font-size: 1.25rem; margin-bottom: 8px;">Portal Omada Controller</h3>
-                    <p style="color: var(--text-secondary); max-width: 500px; line-height: 1.5; margin-bottom: 24px;">
-                        Área destinada à visualização e atalhos rápidos do Omada Cloud Controller. Clique no botão abaixo para acessar a controladora externa.
-                    </p>
-                    <a href="https://omada.tplinkcloud.com/" target="_blank" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                        </svg>
-                        Acessar Omada Externamente
-                    </a>
                 </div>
             </div>
 
