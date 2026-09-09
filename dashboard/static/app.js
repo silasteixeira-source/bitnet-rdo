@@ -347,7 +347,8 @@ function switchView(viewId) {
         'view-os': 'OS em Andamento',
         'view-recoveries': 'Recuperações Pendentes',
         'view-quality': 'Qualidade Cadastral',
-        'view-history': 'Histórico de Operações'
+        'view-history': 'Histórico de Operações',
+        'view-omada': 'Integração Omada'
     };
     els.pageTitle.textContent = titles[viewId] || 'NOC Operations Center';
     
