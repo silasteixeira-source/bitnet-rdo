@@ -4,6 +4,7 @@ services:
     build: ./omada
     container_name: rdo_omada_exporter
     restart: unless-stopped
+    init: true
     shm_size: '2gb'
     # Limites de recursos para proteção da VPS
     deploy:

@@ -241,7 +241,7 @@ class OmadaExporter:
         opts.add_argument("--disk-cache-size=1")
         opts.add_argument("--window-size=1280,720")
         opts.add_argument("--disable-infobars")
-        opts.add_argument("--headless") # Modo headless padrão
+        opts.add_argument("--headless=new") # Modo headless atualizado para evitar crashes no Chrome moderno
 
         # Preferências de download e segurança
         opts.add_experimental_option("prefs", {
