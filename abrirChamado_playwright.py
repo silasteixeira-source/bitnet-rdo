@@ -8,7 +8,6 @@ import sys
 import json
 
 # --- CONFIGURAÇÕES GERAIS ---
-URL_SISTEMA = "https://COLOQUE_A_URL_AQUI.com" # TODO: Coloque o link do sistema NOC aqui
 
 MENSAGEM_NOTA = """Olá! Sou um dos analistas do Projeto Aprender Conectado (EACE), referente à escola.
 
@@ -63,20 +62,29 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
         logging.error(f"Falha ao copiar arquivo de cache: {e}")
         return
 
-    # --- 2. LER INEPs DO JSON TEMPORÁRIO ---
+    # --- 2. LER INEPs DO JSON TEMPORÁRIO (FILTRANDO APENAS OS CRÍTICOS) ---
     try:
         with open(temp_cache_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            pendentes = data.get("falta_abrir", [])
+            # Lê todos os que faltam abrir
+            todos_pendentes = data.get("falta_abrir", [])
+            
+            # FILTRO: Apenas os que contém "🚨 CRÍTICO (>4h)" na coluna 'Regra'
+            pendentes = [p for p in todos_pendentes if "CRÍTICO (>4h)" in str(p.get("Regra", ""))]
             
         if not pendentes:
-            logging.info("A lista 'falta_abrir' está vazia no cache. Nenhum chamado para abrir.")
+            logging.info(f"Nenhum chamado crítico (>4h) encontrado na fila de {len(todos_pendentes)}. Abortando execução.")
             return
             
-        logging.info(f"Encontrados {len(pendentes)} chamados pendentes para abertura.")
+        logging.info(f"Encontrados {len(pendentes)} chamados CRÍTICOS para abertura.")
     except Exception as e:
         logging.error(f"Erro ao ler JSON temporário: {e}")
         return
+
+    # --- 2.5 LER CREDENCIAIS (Mesmo padrão do eace_os_exporter) ---
+    email = os.getenv("EACE_EMAIL", "noc@bitinternet.com.br")
+    password = os.getenv("EACE_PASSWORD", "")
+    LOGIN_URL = "https://eace.org.br/login"
 
     # --- 3. INÍCIO DA AUTOMAÇÃO WEB COM PLAYWRIGHT (HEADLESS/VPS) ---
     with sync_playwright() as p:
@@ -84,7 +92,7 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
         
         browser = p.chromium.launch_persistent_context(
             user_data_dir="./dados_navegador", 
-            headless=True, # Modo invisível para a VPS
+            headless=True,
             args=[
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
@@ -95,9 +103,44 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
         )
         
         page = browser.pages[0] if browser.pages else browser.new_page()
-        page.goto(URL_SISTEMA)
         
-        logging.info("Página inicial carregada. Iniciando processamento dos INEPs...")
+        # --- ETAPA DE LOGIN ---
+        logging.info(f"Acessando portal de Login: {LOGIN_URL}")
+        page.goto(LOGIN_URL)
+        
+        try:
+            # Tenta logar (se já não estiver logado pela sessão persistente)
+            if page.locator("input[type='email'], input[placeholder*='email']").is_visible(timeout=5000):
+                logging.info("Preenchendo e-mail e senha...")
+                page.fill("input[type='email'], input[placeholder*='email']", email)
+                page.fill("input[type='password']", password)
+                
+                # Clica no botão de Log In
+                page.click("button:has-text('Log In'), button:has-text('Login'), button:has-text('Entrar')")
+                page.wait_for_timeout(5000)
+                
+                logging.info("Selecionando perfil Fornecedor...")
+                page.click("text='Fornecedor'")
+                page.wait_for_timeout(5000)
+                
+                logging.info("Navegando para Gerenciar Chamados...")
+                page.click("text='Gerenciar Chamados'")
+                # Aguarda carregar a URL correta (np_fluxos_os)
+                page.wait_for_url("**/np_fluxos_os/**", timeout=15000)
+            else:
+                logging.info("Já logado (sessão aproveitada).")
+                # Garante que está na URL certa
+                if "np_fluxos_os" not in page.url:
+                    logging.info("Navegando para tela de chamados...")
+                    page.click("text='Gerenciar Chamados'")
+                    page.wait_for_url("**/np_fluxos_os/**", timeout=15000)
+                    
+        except TimeoutError:
+            logging.error("Falha de tempo limite durante o login ou navegação inicial.")
+            browser.close()
+            return
+
+        logging.info("Pronto para inserir OS. Iniciando processamento dos INEPs...")
         
         for item in pendentes:
             inep = str(item.get('INEP_Extraido', '')).strip()
@@ -144,11 +187,11 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
             except TimeoutError as e:
                 logging.error(f"[{inep}] Timeout: A página demorou muito ou elemento não foi encontrado.")
-                page.goto(URL_SISTEMA) 
+                page.goto("https://eace.org.br/np_fluxos_os")
                 
             except Exception as e:
                 logging.error(f"[{inep}] Erro inesperado: {e}")
-                page.goto(URL_SISTEMA)
+                page.goto("https://eace.org.br/np_fluxos_os")
         
         browser.close()
         logging.info("Processamento finalizado. Navegador fechado.")
