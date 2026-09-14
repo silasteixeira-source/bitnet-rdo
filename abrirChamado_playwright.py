@@ -116,24 +116,24 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 page.fill("input[type='password']", password)
                 
                 # Clica no botão de Log In
-                page.click("button:has-text('Log In'), button:has-text('Login'), button:has-text('Entrar')")
-                page.wait_for_timeout(5000)
+                page.locator("button:has-text('Log In'), button:has-text('Login'), button:has-text('Entrar')").first.click(timeout=30000)
                 
-                logging.info("Selecionando perfil Fornecedor...")
-                page.click("text='Fornecedor'")
-                page.wait_for_timeout(5000)
+                logging.info("Aguardando carregar tela de perfil... Selecionando perfil Fornecedor...")
+                # O Bubble pode ser bem lento, então espera até 30s pelo perfil
+                page.locator("text=/fornecedor/i").first.click(timeout=30000)
                 
                 logging.info("Navegando para Gerenciar Chamados...")
-                page.click("text='Gerenciar Chamados'")
-                # Aguarda carregar a URL correta (np_fluxos_os)
-                page.wait_for_url("**/np_fluxos_os/**", timeout=15000)
+                page.locator("text=/gerenciar chamados/i, text=/chamados/i").first.click(timeout=30000)
+                
+                # Aguarda carregar a URL correta (np_fluxos_os) com timeout estendido de 60s
+                page.wait_for_url("**/np_fluxos_os/**", timeout=60000)
             else:
                 logging.info("Já logado (sessão aproveitada).")
                 # Garante que está na URL certa
                 if "np_fluxos_os" not in page.url:
                     logging.info("Navegando para tela de chamados...")
-                    page.click("text='Gerenciar Chamados'")
-                    page.wait_for_url("**/np_fluxos_os/**", timeout=15000)
+                    page.locator("text=/gerenciar chamados/i, text=/chamados/i").first.click(timeout=30000)
+                    page.wait_for_url("**/np_fluxos_os/**", timeout=60000)
                     
         except TimeoutError:
             logging.error("Falha de tempo limite durante o login ou navegação inicial.")
