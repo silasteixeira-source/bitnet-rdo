@@ -736,6 +736,17 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     except Exception as e:
         log(f"❌ Erro ao salvar snapshot JSON: {e}")
 
+    # NOVO: Acionar robô de abertura de OS (Playwright) se houver demanda
+    if tenant == "bitnet" and not df_falta_abrir.empty:
+        log(f"Iniciando robô de abertura de chamados (Playwright) para {len(df_falta_abrir)} INEP(s)...")
+        try:
+            import subprocess
+            # Executa em segundo plano para não travar o unificador
+            subprocess.Popen(["python", "abrirChamado_playwright.py", snapshot_path])
+            log("Robô Playwright acionado com sucesso em segundo plano.")
+        except Exception as e_pw:
+            log(f"⚠️ Erro ao tentar executar abrirChamado_playwright.py: {e_pw}")
+
     return True
 
 def main():

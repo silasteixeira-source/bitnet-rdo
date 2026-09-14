@@ -1,9 +1,13 @@
 import pandas as pd
 from playwright.sync_api import sync_playwright, TimeoutError
 import time
+import os
+import shutil
+import logging
+import sys
+import json
 
 # --- CONFIGURAÇÕES GERAIS ---
-ARQUIVO_PLANILHA = "Chamados Pendentes (PA e MA) - Aprovados e Offline 2.xlsx"
 URL_SISTEMA = "https://COLOQUE_A_URL_AQUI.com" # TODO: Coloque o link do sistema NOC aqui
 
 MENSAGEM_NOTA = """Olá! Sou um dos analistas do Projeto Aprender Conectado (EACE), referente à escola.
@@ -13,125 +17,134 @@ Nosso sistema detectou que nosso equipamento está sem conexão. Saberia nos inf
 Poderia nos enviar uma foto dos aparelhos dentro do rack preto? Assim já verificamos se há algum erro físico nas conexões.
 
 Coletando informações com o responsável da escola."""
-LIMITE_DIARIO = 30
 
-def processar_chamados():
-    # --- 1. LEITURA DA PLANILHA ---
-    try:
-        df = pd.read_excel(ARQUIVO_PLANILHA)
-    except FileNotFoundError:
-        print(f"Erro: Arquivo {ARQUIVO_PLANILHA} não encontrado.")
-        return
+# --- CONFIGURAÇÃO DE LOGS ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] [Playwright_OS] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
-    if 'Status_Automacao' not in df.columns:
-        df['Status_Automacao'] = ""
-
-    pendentes = df[df['Status_Automacao'] == ""].head(LIMITE_DIARIO)
-
-    if pendentes.empty:
-        print("Todos os INEPs da planilha já possuem status definido!")
-        return
-
-    # --- 2. INÍCIO DA AUTOMAÇÃO WEB COM PLAYWRIGHT ---
-    with sync_playwright() as p:
-        print("Iniciando o navegador...")
+def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
+    # Verifica se o cache existe
+    if not os.path.exists(cache_path):
+        # Fallbacks em caso de rodar localmente fora do docker
+        alt_paths = ["../.streamlit/snapshots/bitnet.json", ".streamlit/snapshots/bitnet.json", "C:/Users/ADM/Documents/NOC/Arquivos/Automação/RDO/.streamlit/snapshots/bitnet.json"]
+        found = False
+        for alt in alt_paths:
+            if os.path.exists(alt):
+                cache_path = alt
+                found = True
+                break
         
-        # O "user_data_dir" cria uma pasta para salvar os cookies e a sessão.
-        # Assim, você não precisa fazer login toda vez que rodar o script!
+        if not found:
+            logging.info(f"Nenhum cache encontrado em {cache_path}. Abortando execução.")
+            return
+
+    # --- 1. COPIAR CACHE PARA PASTA TEMPORÁRIA ---
+    temp_dir = os.path.join(os.getcwd(), "temp_playwright")
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_cache_path = os.path.join(temp_dir, "bitnet_temp.json")
+    
+    try:
+        shutil.copy2(cache_path, temp_cache_path)
+        logging.info(f"Cache copiado para arquivo temporário: {temp_cache_path}")
+    except Exception as e:
+        logging.error(f"Falha ao copiar arquivo de cache: {e}")
+        return
+
+    # --- 2. LER INEPs DO JSON TEMPORÁRIO ---
+    try:
+        with open(temp_cache_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            pendentes = data.get("falta_abrir", [])
+            
+        if not pendentes:
+            logging.info("A lista 'falta_abrir' está vazia no cache. Nenhum chamado para abrir.")
+            return
+            
+        logging.info(f"Encontrados {len(pendentes)} chamados pendentes para abertura.")
+    except Exception as e:
+        logging.error(f"Erro ao ler JSON temporário: {e}")
+        return
+
+    # --- 3. INÍCIO DA AUTOMAÇÃO WEB COM PLAYWRIGHT (HEADLESS/VPS) ---
+    with sync_playwright() as p:
+        logging.info("Iniciando o navegador em modo Headless (VPS)...")
+        
         browser = p.chromium.launch_persistent_context(
             user_data_dir="./dados_navegador", 
-            headless=False, # Mantém False para você ver o robô trabalhando
-            slow_mo=800     # Atrasa um pouco as ações para imitar um humano e dar tempo de vermos
+            headless=True, # Modo invisível para a VPS
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-software-rasterizer"
+            ]
         )
         
         page = browser.pages[0] if browser.pages else browser.new_page()
         page.goto(URL_SISTEMA)
         
-        # Opcional: Pausa inicial caso você precise logar na primeira vez que rodar
-        print("Aguardando carregamento da página inicial... (Se precisar, faça o login)")
-        # page.wait_for_timeout(5000)
+        logging.info("Página inicial carregada. Iniciando processamento dos INEPs...")
         
-        # --- LOOP DE PROCESSAMENTO ---
-        for index, row in pendentes.iterrows():
-            inep = str(row['INEP']).strip()
-            print(f"\nProcessando INEP: {inep}")
+        for item in pendentes:
+            inep = str(item.get('INEP_Extraido', '')).strip()
+            if not inep:
+                continue
+                
+            logging.info(f"Processando INEP: {inep}")
             
             try:
                 # ----------------------------------------------------------------------
                 # ATENÇÃO: Os seletores abaixo ("input#search", "button", etc) são apenas 
-                # exemplos! Você precisará clicar com o botão direito nos elementos reais
-                # do seu sistema, ir em "Inspecionar" e copiar os seletores corretos.
+                # exemplos! Você precisará ajustar para o seu sistema real.
                 # ----------------------------------------------------------------------
 
-                # 1. Pesquisar na barra principal
-                # Substitua pelo seletor CSS correto da barra de pesquisa
                 seletor_pesquisa = "input[placeholder='Pesquisar']" 
                 page.fill(seletor_pesquisa, inep)
                 
-                # 2. Clicar na opção do INEP (Exemplo usando texto)
-                # O Playwright consegue achar elementos pelo texto visível!
                 page.click(f"text={inep}")
                 
-                # 3. Adicionar Nova OS
                 page.click("button:has-text('Nova OS')") 
                 
-                # 4. ABRIR OS - Preencher INEP no modal
-                # O Playwright já tem "Auto-Wait" (Espera Inteligente). 
-                # Ele vai aguardar automaticamente o modal aparecer sem precisar de time.sleep!
                 seletor_modal_inep = "input#campo_inep_modal"
-                page.wait_for_selector(seletor_modal_inep, state="visible")
+                # Usando timeout menor no modal para evitar travar 30s por INEP
+                page.wait_for_selector(seletor_modal_inep, state="visible", timeout=15000)
                 page.fill(seletor_modal_inep, inep)
                 
-                # Se após digitar precisar dar Enter ou clicar na opção que desce:
                 page.keyboard.press("ArrowDown")
                 page.keyboard.press("Enter")
                 
-                # 5. Clicar em "Incluir"
                 page.click("button:has-text('Incluir')")
-                
-                # 6. Entrar na OS
                 page.click("button:has-text('Entrar')")
-                
-                # 7. Clicar em "Notas"
                 page.click("a:has-text('Notas')")
                 
-                # 8. Colar notas
                 seletor_notas = "textarea#campo_notas"
                 page.fill(seletor_notas, MENSAGEM_NOTA)
                 
-                # 9. Adicionar para finalizar
                 page.click("button:has-text('Adicionar Nota')")
-                
-                # Dá um pequeno tempo antes de considerar sucesso
                 page.wait_for_timeout(2000)
                 
-                # Salva o status de sucesso
-                df.at[index, 'Status_Automacao'] = "OS Aberta e Nota Inserida"
-                print(f"[{inep}] Sucesso!")
+                logging.info(f"[{inep}] Sucesso! OS aberta e nota inserida.")
                 
-                # 10. Voltar (se necessário) e Atualizar a página
                 page.go_back()
                 page.reload()
                 
             except TimeoutError as e:
-                # O TimeoutError ocorre se o Playwright esperar 30 segundos e não achar um botão/campo
-                print(f"[{inep}] Erro: A página demorou muito ou um botão não foi encontrado.")
-                df.at[index, 'Status_Automacao'] = "Erro de Elemento/Timeout"
-                
-                # Volta para a home para não quebrar o loop no próximo INEP
+                logging.error(f"[{inep}] Timeout: A página demorou muito ou elemento não foi encontrado.")
                 page.goto(URL_SISTEMA) 
                 
             except Exception as e:
-                print(f"[{inep}] Erro inesperado: {e}")
-                df.at[index, 'Status_Automacao'] = f"Erro: {str(e)[:50]}"
+                logging.error(f"[{inep}] Erro inesperado: {e}")
                 page.goto(URL_SISTEMA)
         
-        # Fecha o navegador no final
         browser.close()
-        
-    # --- 3. SALVA RESULTADOS ---
-    df.to_excel(ARQUIVO_PLANILHA, index=False)
-    print("\nFinalizado! Planilha salva.")
+        logging.info("Processamento finalizado. Navegador fechado.")
 
 if __name__ == "__main__":
-    processar_chamados()
+    if len(sys.argv) > 1:
+        processar_chamados(sys.argv[1])
+    else:
+        processar_chamados()
