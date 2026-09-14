@@ -18,14 +18,12 @@ WORKDIR /app
 # Copiar dependências Python
 COPY eace/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install chromium
-RUN playwright install-deps chromium
 
 # Copiar código do robô EACE e do Unificador Automático
 COPY eace/eace_os_exporter.py .
 COPY unificador_auto.py .
 COPY utils_omada.py .
-COPY abrirChamado_playwright.py .
+COPY abrirChamado_selenium.py .
 
 # Volume persistente para salvar a planilha em dados_eace na VPS
 VOLUME ["/app/dados_eace"]
