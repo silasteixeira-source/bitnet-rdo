@@ -26,6 +26,16 @@ logging.basicConfig(
 )
 
 def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
+    # --- 0. TRAVA DE SEGURANÇA: HORÁRIO COMERCIAL ---
+    from datetime import datetime, timezone, timedelta
+    fuso_br = timezone(timedelta(hours=-3))
+    agora = datetime.now(fuso_br)
+    
+    # weekday(): 0=Segunda, ..., 4=Sexta
+    if agora.weekday() > 4 or not (8 <= agora.hour < 17):
+        logging.warning(f"ACESSO NEGADO: Fora do horário permitido (Seg-Sex, 08h às 16h). O script foi abortado por segurança. (Agora: {agora.strftime('%A %H:%M')})")
+        return
+
     # Verifica se o cache existe
     if not os.path.exists(cache_path):
         # Fallbacks em caso de rodar localmente fora do docker

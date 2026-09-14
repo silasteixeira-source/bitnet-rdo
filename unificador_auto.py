@@ -738,14 +738,19 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
 
     # NOVO: Acionar robô de abertura de OS (Playwright) se houver demanda
     if tenant == "bitnet" and not df_falta_abrir.empty:
-        log(f"Iniciando robô de abertura de chamados (Playwright) para {len(df_falta_abrir)} INEP(s)...")
-        try:
-            import subprocess
-            # Executa em segundo plano para não travar o unificador
-            subprocess.Popen(["python", "abrirChamado_playwright.py", snapshot_path])
-            log("Robô Playwright acionado com sucesso em segundo plano.")
-        except Exception as e_pw:
-            log(f"⚠️ Erro ao tentar executar abrirChamado_playwright.py: {e_pw}")
+        agora = datetime.now(FUSO_BR)
+        # Verifica horário (Segunda a Sexta = 0 a 4; 08h às 16h = hour entre 8 e 16)
+        if agora.weekday() < 5 and 8 <= agora.hour < 17:
+            log(f"Iniciando robô de abertura de chamados (Playwright) para {len(df_falta_abrir)} INEP(s)...")
+            try:
+                import subprocess
+                # Executa em segundo plano para não travar o unificador
+                subprocess.Popen(["python", "abrirChamado_playwright.py", snapshot_path])
+                log("Robô Playwright acionado com sucesso em segundo plano.")
+            except Exception as e_pw:
+                log(f"⚠️ Erro ao tentar executar abrirChamado_playwright.py: {e_pw}")
+        else:
+            log(f"Fora do horário comercial (Seg-Sex, 08h-16h). Robô bloqueado. (Agora: {agora.strftime('%A %H:%M')})")
 
     return True
 
