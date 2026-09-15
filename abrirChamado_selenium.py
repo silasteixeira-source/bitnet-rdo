@@ -355,7 +355,7 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 try:
                     # Busca ampla por elementos que contenham 'Nota' (evitando 'Notas técnicas')
                     # Ao inverter a lista, garantimos que clicamos no elemento filho (o texto em si) antes do container pai!
-                    elementos_nota = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nota') or contains(text(), 'Anota')]")
+                    elementos_nota = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nota') or contains(text(), 'Anota') or text()='Nota']")
                     clicou_aba = False
                     
                     for el in reversed(elementos_nota):
@@ -371,7 +371,14 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                         except: pass
                             
                     if not clicou_aba:
-                        logging.warning(f"[{inep}] Não encontrei a aba 'Nota' clicável.")
+                        logging.warning(f"[{inep}] Não encontrei a aba 'Nota' clicável por XPath normal. Tentando forçar clique...")
+                        try:
+                            # Tenta clicar no rádio adjacente ou label
+                            aba = driver.find_element(By.XPATH, "//label[contains(., 'Nota')]")
+                            driver.execute_script("arguments[0].click();", aba)
+                            clicou_aba = True
+                        except: pass
+                    
                     time.sleep(3)
                 except Exception as e:
                     logging.warning(f"[{inep}] Erro ao buscar aba 'Nota': {e}")
@@ -400,6 +407,9 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                             if div.is_displayed():
                                 area_nota = div
                                 break
+
+                    if not area_nota:
+                        raise Exception("A área de texto (textarea/input) da nota não foi encontrada ou não está visível.")
 
                     driver.execute_script("arguments[0].focus();", area_nota)
                     time.sleep(0.5)
