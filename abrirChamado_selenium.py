@@ -340,21 +340,24 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] 6. Navegando para Notas...")
                 try:
-                    # Clicar na aba/botão "Notas" ou "Histórico" (ajuste conforme o texto exato da aba)
-                    aba_notas = driver.find_element(By.XPATH, "//*[normalize-space(text())='Notas' or normalize-space(text())='Anotações' or normalize-space(text())='Histórico']")
+                    # O texto exato na tela é "Nota" (no singular, ao lado de Análise, Histórico, Conversas)
+                    aba_notas = driver.find_element(By.XPATH, "//*[normalize-space(text())='Nota']")
                     driver.execute_script("arguments[0].click();", aba_notas)
                     time.sleep(3)
                 except Exception as e:
-                    logging.warning(f"[{inep}] Não encontrei o botão 'Notas', tentando colar a nota mesmo assim: {e}")
+                    logging.warning(f"[{inep}] Não encontrei o botão 'Nota', tentando colar a nota mesmo assim: {e}")
                 
                 logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
                     area_nota = None
                     try:
-                        area_nota = driver.find_element(By.XPATH, "//textarea")
+                        # Tenta achar pela placeholder "Escreva o que aconteceu..." que aparece na imagem
+                        area_nota = driver.find_element(By.XPATH, "//textarea[contains(@placeholder, 'aconteceu')]")
                     except:
-                        # Fallback se o Bubble usar rich text div
-                        area_nota = driver.find_element(By.XPATH, "//div[@contenteditable='true']")
+                        try:
+                            area_nota = driver.find_element(By.XPATH, "//textarea")
+                        except:
+                            area_nota = driver.find_element(By.XPATH, "//div[@contenteditable='true']")
                         
                     driver.execute_script("arguments[0].focus();", area_nota)
                     time.sleep(0.5)
@@ -366,7 +369,8 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     time.sleep(2)
                     
                     logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
-                    btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar') or contains(text(), 'Salvar') or contains(text(), 'Enviar') or contains(text(), 'Incluir Nota')]")
+                    # O botão é verde com o texto "+ Adicionar"
+                    btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar')]")
                     driver.execute_script("arguments[0].click();", btn_adicionar_nota)
                     time.sleep(4)
                     
@@ -377,7 +381,8 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     
                 logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
                 try:
-                    btn_voltar = driver.find_element(By.XPATH, "//*[normalize-space(text())='Voltar' or normalize-space(text())='Fechar' or normalize-space(text())='X']")
+                    # O botão de voltar fica lá no topo esquerdo "<- Voltar"
+                    btn_voltar = driver.find_element(By.XPATH, "//*[contains(text(), 'Voltar')]")
                     driver.execute_script("arguments[0].click();", btn_voltar)
                     time.sleep(3)
                 except:
