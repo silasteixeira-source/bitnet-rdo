@@ -146,6 +146,16 @@ def login_e_navegar(driver, email, password):
 
 
 def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
+    # Seleção Dinâmica de Credenciais baseada no Tenant
+    if "st1" in cache_path.lower():
+        email = os.environ.get("EACE_ST1_EMAIL", "noceace@st1.com.br")
+        senha = os.environ.get("EACE_ST1_PASSWORD", "SenhaST1Aqui")
+        logging.info(f"Modo ST1 detectado. Usando credenciais de ST1: {email}")
+    else:
+        email = os.environ.get("EACE_EMAIL", "noc@bitinternet.com.br")
+        senha = os.environ.get("EACE_PASSWORD", "B1Tnet1020#")
+        logging.info(f"Modo BITNET detectado. Usando credenciais de Bitnet: {email}")
+
     # --- 0. TRAVA DE SEGURANÇA: HORÁRIO COMERCIAL ---
     fuso_br = timezone(timedelta(hours=-3))
     agora = datetime.now(fuso_br)
@@ -194,14 +204,13 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
     except Exception as e:
         logging.error(f"Erro ao ler JSON: {e}")
         return
-
-    email = os.getenv("EACE_EMAIL", "noc@bitinternet.com.br")
-    password = os.getenv("EACE_PASSWORD", "")
+        
+    # As variáveis email e senha já foram definidas no topo da função baseadas no tenant!
     
     driver = None
     try:
         driver = init_driver()
-        sucesso = login_e_navegar(driver, email, password)
+        sucesso = login_e_navegar(driver, email, senha)
         
         if not sucesso:
             logging.error("Abortando inserção de OS devido à falha no Login/Navegação inicial.")
