@@ -340,25 +340,39 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] 6. Navegando para Notas...")
                 try:
-                    # O texto exato na tela é "Nota" (no singular, ao lado de Análise, Histórico, Conversas)
-                    aba_notas = driver.find_element(By.XPATH, "//*[normalize-space(text())='Nota']")
-                    driver.execute_script("arguments[0].click();", aba_notas)
+                    # Encontrar todos os elementos que contêm 'Nota' e clicar no que tem exatamente esse texto (ignorando "Notas técnicas" etc)
+                    elementos_nota = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nota')]")
+                    clicou_aba = False
+                    for el in elementos_nota:
+                        if el.is_displayed() and el.text.strip() == "Nota":
+                            driver.execute_script("arguments[0].click();", el)
+                            clicou_aba = True
+                            break
+                            
+                    if not clicou_aba:
+                        logging.warning(f"[{inep}] Não encontrei o botão com texto exato 'Nota'.")
                     time.sleep(3)
                 except Exception as e:
-                    logging.warning(f"[{inep}] Não encontrei o botão 'Nota', tentando colar a nota mesmo assim: {e}")
+                    logging.warning(f"[{inep}] Erro ao buscar botão 'Nota': {e}")
                 
                 logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
+                    # Buscar textarea visível
                     area_nota = None
-                    try:
-                        # Tenta achar pela placeholder "Escreva o que aconteceu..." que aparece na imagem
-                        area_nota = driver.find_element(By.XPATH, "//textarea[contains(@placeholder, 'aconteceu')]")
-                    except:
-                        try:
-                            area_nota = driver.find_element(By.XPATH, "//textarea")
-                        except:
-                            area_nota = driver.find_element(By.XPATH, "//div[@contenteditable='true']")
-                        
+                    textareas = driver.find_elements(By.TAG_NAME, "textarea")
+                    for ta in textareas:
+                        if ta.is_displayed():
+                            area_nota = ta
+                            break
+                            
+                    if not area_nota:
+                        # Fallback
+                        divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
+                        for div in divs_editaveis:
+                            if div.is_displayed():
+                                area_nota = div
+                                break
+
                     driver.execute_script("arguments[0].focus();", area_nota)
                     time.sleep(0.5)
                     try: area_nota.click()
@@ -369,14 +383,16 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     time.sleep(2)
                     
                     logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
-                    # O botão é verde com o texto "+ Adicionar"
-                    btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar')]")
-                    driver.execute_script("arguments[0].click();", btn_adicionar_nota)
+                    botoes_adicionar = driver.find_elements(By.XPATH, "//*[contains(text(), 'Adicionar')]")
+                    for btn in botoes_adicionar:
+                        if btn.is_displayed():
+                            driver.execute_script("arguments[0].click();", btn)
+                            break
                     time.sleep(4)
                     
                     sucesso_nota = True
                 except Exception as e:
-                    logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. A OS pode não ter sido aberta. Erro: {e}")
+                    logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
                     sucesso_nota = False
                     
                 logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
