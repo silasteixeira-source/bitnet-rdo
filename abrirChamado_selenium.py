@@ -236,22 +236,34 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] Preenchendo o INEP no modal...")
                 try:
-                    # O placeholder na imagem é "Digite o código INEP da escola"
-                    # Pegamos todos os inputs visíveis e achamos o correto
-                    inputs_modal = driver.find_elements(By.XPATH, "//input[@type='text']")
-                    input_escola = None
-                    for inp in inputs_modal:
-                        if inp.is_displayed():
-                            place = str(inp.get_attribute("placeholder")).lower()
-                            if "inep" in place or "código" in place:
-                                input_escola = inp
-                                break
+                    # Pegamos todos os inputs visíveis e achamos o correto do modal
+                    # O Bubble costuma colocar o modal no final do DOM. E não tem placeholder nativo se ele usar div sobreposta.
+                    inputs_tela = driver.find_elements(By.TAG_NAME, "input")
+                    candidatos = []
+                    for inp in inputs_tela:
+                        try:
+                            if inp.is_displayed() and inp.get_attribute("type") in ["text", "search", ""]:
+                                place = str(inp.get_attribute("placeholder") or "").strip()
+                                # Ignora os que sabemos que são da barra de fundo
+                                if place in ["INEP", "OS do fornecedor", "OS da EACE"]:
+                                    continue
+                                candidatos.append(inp)
+                        except: pass
                     
-                    if not input_escola:
-                        # Fallback se não achar pelo placeholder
-                        input_escola = driver.find_element(By.XPATH, "//div[contains(@class, 'Popup')]//input[@type='text'] | //input[contains(@placeholder, 'INEP')]")
+                    if not candidatos:
+                        raise Exception("Não encontrei o input do modal!")
                         
-                    input_escola.click()
+                    # O último input válido na tela quase sempre é o do modal em cima de tudo
+                    input_escola = candidatos[-1]
+                        
+                    # Força o foco e clica pra garantir
+                    driver.execute_script("arguments[0].focus();", input_escola)
+                    time.sleep(0.5)
+                    try:
+                        input_escola.click()
+                    except:
+                        driver.execute_script("arguments[0].click();", input_escola)
+                        
                     input_escola.clear()
                     input_escola.send_keys(inep)
                     time.sleep(2)
