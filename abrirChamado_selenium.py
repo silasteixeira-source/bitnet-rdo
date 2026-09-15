@@ -153,7 +153,7 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
         logging.info(f"Modo ST1 detectado. Usando credenciais de ST1: {email}")
     else:
         email = os.environ.get("EACE_EMAIL", "noc@bitinternet.com.br")
-        senha = os.environ.get("EACE_PASSWORD", "B1Tnet1020#")
+        senha = os.environ.get("EACE_PASSWORD", "EscolasConectadas@1")
         logging.info(f"Modo BITNET detectado. Usando credenciais de Bitnet: {email}")
 
     # --- 0. TRAVA DE SEGURANÇA: HORÁRIO COMERCIAL ---
