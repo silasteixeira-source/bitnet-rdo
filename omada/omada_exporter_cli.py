@@ -1212,8 +1212,9 @@ def run_cli_mode(args):
                 exporter_st1.run_once(skip_logs=False)
                 
             elapsed = time.time() - cycle_start
-            sleep_time = max(0, interval - elapsed)
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo concluído em {elapsed:.1f}s. Aguardando {sleep_time:.1f}s...")
+            # Garante que sempre vai pausar o intervalo configurado APÓS terminar, para evitar loop infinito
+            sleep_time = interval
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo concluído em {elapsed:.1f}s. Aguardando {sleep_time:.1f}s de resfriamento...")
             time.sleep(sleep_time)
             
     except (KeyboardInterrupt, SystemExit):
