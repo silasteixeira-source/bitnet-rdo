@@ -223,9 +223,33 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 # ATENÇÃO: PREENCHA OS SELETORES XPATH (OU BY.CLASS_NAME / BY.CSS_SELECTOR) ABAIXO
                 # ==============================================================================
                 # ==============================================================================
-                # NOVA ROTINA DE ABERTURA DE OS (Baseada nas imagens)
+                # NOVA ROTINA DE ABERTURA DE OS (Baseada no script PyAutoGUI original)
                 # ==============================================================================
-                logging.info(f"[{inep}] Clicando no botão 'Adicionar nova OS'...")
+                
+                logging.info(f"[{inep}] 1. Filtrando OS pelo INEP na barra principal...")
+                try:
+                    inputs_tela = driver.find_elements(By.TAG_NAME, "input")
+                    input_filtro = None
+                    for inp in inputs_tela:
+                        if inp.is_displayed() and str(inp.get_attribute("placeholder")).strip() == "INEP":
+                            input_filtro = inp
+                            break
+                    
+                    if input_filtro:
+                        driver.execute_script("arguments[0].scrollIntoView(true);", input_filtro)
+                        driver.execute_script("arguments[0].focus();", input_filtro)
+                        time.sleep(0.5)
+                        try: input_filtro.click()
+                        except: driver.execute_script("arguments[0].click();", input_filtro)
+                        input_filtro.clear()
+                        input_filtro.send_keys(inep)
+                        time.sleep(4) # Esperar o Kanban filtrar
+                    else:
+                        logging.warning(f"[{inep}] Não achei o filtro principal de INEP. Tentando seguir...")
+                except Exception as e:
+                    logging.error(f"[{inep}] Erro ao filtrar INEP: {e}")
+                
+                logging.info(f"[{inep}] 2. Clicando no botão 'Adicionar nova OS'...")
                 try:
                     btn_nova_os = driver.find_element(By.XPATH, "//*[normalize-space(text())='Adicionar nova OS']")
                     driver.execute_script("arguments[0].click();", btn_nova_os)
@@ -234,17 +258,14 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     logging.error(f"[{inep}] Não achei o botão 'Adicionar nova OS'. Abortando. Erro: {e}")
                     continue
                 
-                logging.info(f"[{inep}] Preenchendo o INEP no modal...")
+                logging.info(f"[{inep}] 3. Preenchendo o INEP no modal de Nova OS...")
                 try:
-                    # Pegamos todos os inputs visíveis e achamos o correto do modal
-                    # O Bubble costuma colocar o modal no final do DOM. E não tem placeholder nativo se ele usar div sobreposta.
                     inputs_tela = driver.find_elements(By.TAG_NAME, "input")
                     candidatos = []
                     for inp in inputs_tela:
                         try:
                             if inp.is_displayed() and inp.get_attribute("type") in ["text", "search", ""]:
                                 place = str(inp.get_attribute("placeholder") or "").strip()
-                                # Ignora os que sabemos que são da barra de fundo
                                 if place in ["INEP", "OS do fornecedor", "OS da EACE"]:
                                     continue
                                 candidatos.append(inp)
@@ -253,22 +274,15 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     if not candidatos:
                         raise Exception("Não encontrei o input do modal!")
                         
-                    # O último input válido na tela quase sempre é o do modal em cima de tudo
                     input_escola = candidatos[-1]
-                        
-                    # Força o foco e clica pra garantir
                     driver.execute_script("arguments[0].focus();", input_escola)
                     time.sleep(0.5)
-                    try:
-                        input_escola.click()
-                    except:
-                        driver.execute_script("arguments[0].click();", input_escola)
+                    try: input_escola.click()
+                    except: driver.execute_script("arguments[0].click();", input_escola)
                         
                     input_escola.clear()
                     input_escola.send_keys(inep)
                     time.sleep(2)
-                    
-                    # Simula seleção no Bubble (seta pra baixo + enter ou apenas enter)
                     input_escola.send_keys(Keys.ARROW_DOWN)
                     time.sleep(1)
                     input_escola.send_keys(Keys.ENTER)
@@ -276,38 +290,77 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     
                 except Exception as e:
                     logging.error(f"[{inep}] Erro ao digitar INEP no modal: {e}")
-                    # Tentar clicar em fechar pra não travar a próxima
                     try: driver.execute_script("arguments[0].click();", driver.find_element(By.XPATH, "//*[text()='Fechar']"))
                     except: pass
                     continue
                 
-                logging.info(f"[{inep}] Clicando em 'Incluir'...")
+                logging.info(f"[{inep}] 4. Clicando em 'Incluir'...")
                 try:
                     btn_incluir = driver.find_element(By.XPATH, "//*[normalize-space(text())='Incluir']")
                     driver.execute_script("arguments[0].click();", btn_incluir)
-                    time.sleep(6) # Esperar a OS ser criada e a página/modal carregar
+                    time.sleep(6) # Esperar a OS ser criada e aparecer no painel
                 except Exception as e:
                     logging.error(f"[{inep}] Erro ao clicar em Incluir: {e}")
                     continue
                 
-                # Exemplo 3: Preencher a MENSAGEM_NOTA (Mantendo conforme solicitado)
-                logging.info(f"[{inep}] Preenchendo MENSAGEM_NOTA...")
+                logging.info(f"[{inep}] 5. Entrando na OS criada...")
+                try:
+                    # Como filtramos pelo INEP no passo 1, o card da nova OS vai ser um dos primeiros/únicos na tela
+                    cards = driver.find_elements(By.XPATH, f"//*[contains(text(), '{inep}')]")
+                    card_alvo = None
+                    # Procurar um card clicável que não seja o próprio filtro
+                    for c in cards:
+                        if c.is_displayed() and c.tag_name not in ["input", "textarea"]:
+                            card_alvo = c
+                            break
+                            
+                    if card_alvo:
+                        driver.execute_script("arguments[0].click();", card_alvo)
+                        time.sleep(5) # Esperar OS abrir
+                    else:
+                        raise Exception("Card da OS não apareceu na tela principal!")
+                except Exception as e:
+                    logging.error(f"[{inep}] Erro ao tentar entrar na OS recém-criada: {e}")
+                    continue
+                
+                logging.info(f"[{inep}] 6. Navegando para Notas...")
+                try:
+                    # Clicar na aba/botão "Notas" ou "Histórico" (ajuste conforme o texto exato da aba)
+                    aba_notas = driver.find_element(By.XPATH, "//*[normalize-space(text())='Notas' or normalize-space(text())='Anotações' or normalize-space(text())='Histórico']")
+                    driver.execute_script("arguments[0].click();", aba_notas)
+                    time.sleep(3)
+                except Exception as e:
+                    logging.warning(f"[{inep}] Não encontrei o botão 'Notas', tentando colar a nota mesmo assim: {e}")
+                
+                logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
                     area_nota = driver.find_element(By.XPATH, "//textarea")
-                    area_nota.click()
+                    driver.execute_script("arguments[0].focus();", area_nota)
+                    time.sleep(0.5)
+                    try: area_nota.click()
+                    except: driver.execute_script("arguments[0].click();", area_nota)
+                    
+                    area_nota.clear()
                     area_nota.send_keys(MENSAGEM_NOTA)
                     time.sleep(2)
                     
-                    logging.info(f"[{inep}] Clicando em Salvar/Adicionar Nota...")
-                    # Procura o botão de enviar a nota (geralmente fica perto do textarea ou tem texto óbvio)
-                    btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar Nota') or contains(text(), 'Salvar') or contains(text(), 'Enviar') or contains(text(), 'Adicionar')]")
+                    logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
+                    btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar') or contains(text(), 'Salvar') or contains(text(), 'Enviar') or contains(text(), 'Incluir Nota')]")
                     driver.execute_script("arguments[0].click();", btn_adicionar_nota)
-                    
-                    logging.info(f"[{inep}] ✅ OS ABERTA COM SUCESSO!")
-                    time.sleep(3)
+                    time.sleep(4)
                 except Exception as e:
                     logging.error(f"[{inep}] Erro ao preencher/salvar a MENSAGEM_NOTA: {e}")
-                    # Não dá 'continue' aqui pois a OS já foi aberta, apenas falhou a nota.
+                    # Segue para tentar voltar
+                    
+                logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
+                try:
+                    btn_voltar = driver.find_element(By.XPATH, "//*[normalize-space(text())='Voltar' or normalize-space(text())='Fechar' or normalize-space(text())='X']")
+                    driver.execute_script("arguments[0].click();", btn_voltar)
+                    time.sleep(3)
+                except:
+                    pass
+                    
+                logging.info(f"[{inep}] ✅ OS ABERTA COM SUCESSO!")
 
                 
                 # Retorna à tela inicial de listagem de chamados para o próximo INEP
