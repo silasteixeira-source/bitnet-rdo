@@ -230,29 +230,37 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 # ==============================================================================
                 
                 # Exemplo 1: Preencher a barra de pesquisa
-                # input_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Pesquisar']")
-                # input_pesquisa.clear()
-                # input_pesquisa.send_keys(inep)
-                # time.sleep(3)
+                logging.info(f"[{inep}] Procurando barra de pesquisa...")
+                input_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Pesquisar' or contains(@placeholder, 'Buscar')]")
+                input_pesquisa.clear()
+                input_pesquisa.send_keys(inep)
+                time.sleep(3)
                 
                 # Exemplo 2: Clicar no botão 'Nova OS'
-                # btn_nova_os = driver.find_element(By.XPATH, "//*[contains(text(), 'Nova OS')]")
-                # btn_nova_os.click()
-                # time.sleep(3)
+                logging.info(f"[{inep}] Clicando em Nova OS...")
+                btn_nova_os = driver.find_element(By.XPATH, "//*[contains(text(), 'Nova OS') or contains(text(), 'Criar OS')]")
+                driver.execute_script("arguments[0].click();", btn_nova_os)
+                time.sleep(3)
                 
                 # Exemplo 3: Preencher o modal e enviar notas
-                # input_inep_modal = driver.find_element(By.XPATH, "//input[@id='campo_inep_modal']")
-                # input_inep_modal.send_keys(inep)
-                # time.sleep(1)
+                logging.info(f"[{inep}] Preenchendo dados da OS...")
                 
-                # area_nota = driver.find_element(By.XPATH, "//textarea[@id='campo_notas']")
-                # area_nota.send_keys(MENSAGEM_NOTA)
-                # time.sleep(1)
+                # Procura o campo de inep no modal (pode precisar de ajuste)
+                inputs_modal = driver.find_elements(By.XPATH, "//input[@type='text']")
+                if len(inputs_modal) > 0:
+                    inputs_modal[0].send_keys(inep)
+                time.sleep(1)
                 
-                # btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar Nota')]")
-                # btn_adicionar_nota.click()
+                # Procura a área de texto da nota
+                area_nota = driver.find_element(By.XPATH, "//textarea")
+                area_nota.send_keys(MENSAGEM_NOTA)
+                time.sleep(1)
                 
-                logging.info(f"[{inep}] Processado com sucesso (após os comandos reais serem ativados).")
+                logging.info(f"[{inep}] Salvando OS...")
+                btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar Nota') or contains(text(), 'Salvar') or contains(text(), 'Enviar')]")
+                driver.execute_script("arguments[0].click();", btn_adicionar_nota)
+                
+                logging.info(f"[{inep}] OS ABERTA COM SUCESSO!")
                 
                 # Retorna à tela inicial de listagem de chamados para o próximo INEP
                 driver.get(url_base_os)
