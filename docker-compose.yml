@@ -70,6 +70,7 @@ services:
       - ./omada/dados_omada:/app/omada/dados_omada
       - ./omada/dados_st1:/app/omada/dados_st1
       - ./.streamlit:/app/.streamlit
+      - ./temp:/app/temp
     command: ["python", "-u", "eace_os_exporter.py", "--intervalo", "210"]
 
   # Site Web (Painel Streamlit)
