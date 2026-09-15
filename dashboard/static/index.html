@@ -441,9 +441,17 @@
                 </div>
             </div>
             
-            <div class="flex gap-2" style="margin-top:var(--sp-4); margin-bottom:var(--sp-6)">
-                <button class="btn btn-primary w-full justify-center" id="btn-drawer-prepare">Preparar Abertura</button>
-                <button class="btn w-full justify-center" id="btn-drawer-copy">Copiar Resumo</button>
+            <div class="flex gap-2" style="margin-top:var(--sp-4); margin-bottom:var(--sp-6); flex-direction: column;">
+                <div style="margin-bottom: 8px;">
+                    <label style="font-size: 11px; color: var(--text-sec); display: block; margin-bottom: 4px; text-transform: uppercase;">Atribuir para:</label>
+                    <select id="agent-select" class="form-input" style="width: 100%; border-radius: 4px; padding: 8px;">
+                        <option value="">Selecione um agente...</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn btn-primary w-full justify-center" id="btn-drawer-prepare">Atribuir OS</button>
+                    <button class="btn w-full justify-center" id="btn-drawer-copy">Copiar Resumo</button>
+                </div>
             </div>
             
             <h4 class="text-sec" style="text-transform:uppercase; font-size:12px; margin-top:var(--sp-8); margin-bottom:var(--sp-4)">Timeline</h4>

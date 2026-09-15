@@ -49,6 +49,7 @@ const els = {
     syncText: document.getElementById('sync-text'),
     btnRefresh: document.getElementById('btn-refresh'),
     btnDrawerPrepare: document.getElementById('btn-drawer-prepare'),
+    agentSelect: document.getElementById('agent-select'),
     btnDrawerCopy: document.getElementById('btn-drawer-copy'),
     
     // Novas métricas (Panorama Global)
@@ -1318,9 +1319,46 @@ function openDrawer(item) {
         els.drawerCad.innerHTML = '<span class="badge badge-success">Sincronizado</span>';
     }
 
+    if (els.agentSelect) {
+        els.agentSelect.innerHTML = '<option value="">Selecione um agente...</option>';
+        state.agents.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            els.agentSelect.appendChild(opt);
+        });
+        if (state.assignments[inep]) {
+            els.agentSelect.value = state.assignments[inep];
+        }
+    }
+
     if (els.btnDrawerPrepare) {
-        els.btnDrawerPrepare.onclick = () => {
-            logActionToHistory('preparar_abertura', inep, name, 'Preparou a abertura do chamado no sistema EACE/RDO');
+        els.btnDrawerPrepare.onclick = async () => {
+            const agentId = els.agentSelect ? els.agentSelect.value : null;
+            if (!agentId) {
+                iziToast.warning({ title: 'Atenção', message: 'Selecione um agente para atribuir a OS.', position: 'topRight' });
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/v1/assignments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': window.NOC_API_KEY },
+                    body: JSON.stringify({ inep: inep, agent_id: agentId })
+                });
+                if (res.ok) {
+                    await fetchAssignments();
+                    const ag = state.agents.find(a => a.id === agentId);
+                    logActionToHistory('atribuido', inep, name, `OS atribuída para o agente: ${ag ? ag.name : agentId}`);
+                    iziToast.success({ title: 'Sucesso', message: 'OS atribuída com sucesso!', position: 'topRight' });
+                    renderOs();
+                    closeDrawer();
+                } else {
+                    iziToast.error({ title: 'Erro', message: 'Falha ao atribuir OS.', position: 'topRight' });
+                }
+            } catch (e) {
+                console.error(e);
+            }
         };
     }
     
