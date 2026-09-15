@@ -14,13 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # --- CONFIGURAÇÕES GERAIS ---
-MENSAGEM_NOTA = """Olá! Sou um dos analistas do Projeto Aprender Conectado (EACE), referente à escola.
-
-Nosso sistema detectou que nosso equipamento está sem conexão. Saberia nos informar se a escola está sem internet ou se o equipamento foi desligado?
-
-Poderia nos enviar uma foto dos aparelhos dentro do rack preto? Assim já verificamos se há algum erro físico nas conexões.
-
-Coletando informações com o responsável da escola."""
+MENSAGEM_NOTA = "Coletando informações com um dos responsáveis"
 
 LOGIN_URL = "https://eace.org.br/login"
 
