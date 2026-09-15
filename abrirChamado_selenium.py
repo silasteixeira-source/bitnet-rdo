@@ -282,10 +282,25 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                         
                     input_escola.clear()
                     input_escola.send_keys(inep)
-                    time.sleep(2)
-                    input_escola.send_keys(Keys.ARROW_DOWN)
-                    time.sleep(1)
-                    input_escola.send_keys(Keys.ENTER)
+                    time.sleep(4) # Mais tempo para o Bubble puxar do banco de dados
+                    
+                    # Precisamos CLICAR na sugestão azul que o Bubble mostra
+                    try:
+                        sugestoes = driver.find_elements(By.XPATH, f"//div[contains(text(), '{inep}')]")
+                        clicou_sugestao = False
+                        for s in sugestoes:
+                            if s.is_displayed() and s.tag_name != "input":
+                                driver.execute_script("arguments[0].click();", s)
+                                clicou_sugestao = True
+                                break
+                                
+                        if not clicou_sugestao:
+                            input_escola.send_keys(Keys.ARROW_DOWN)
+                            time.sleep(1)
+                            input_escola.send_keys(Keys.ENTER)
+                    except:
+                        input_escola.send_keys(Keys.ENTER)
+                    
                     time.sleep(2)
                     
                 except Exception as e:
@@ -334,7 +349,13 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
-                    area_nota = driver.find_element(By.XPATH, "//textarea")
+                    area_nota = None
+                    try:
+                        area_nota = driver.find_element(By.XPATH, "//textarea")
+                    except:
+                        # Fallback se o Bubble usar rich text div
+                        area_nota = driver.find_element(By.XPATH, "//div[@contenteditable='true']")
+                        
                     driver.execute_script("arguments[0].focus();", area_nota)
                     time.sleep(0.5)
                     try: area_nota.click()
@@ -348,9 +369,11 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     btn_adicionar_nota = driver.find_element(By.XPATH, "//*[contains(text(), 'Adicionar') or contains(text(), 'Salvar') or contains(text(), 'Enviar') or contains(text(), 'Incluir Nota')]")
                     driver.execute_script("arguments[0].click();", btn_adicionar_nota)
                     time.sleep(4)
+                    
+                    sucesso_nota = True
                 except Exception as e:
-                    logging.error(f"[{inep}] Erro ao preencher/salvar a MENSAGEM_NOTA: {e}")
-                    # Segue para tentar voltar
+                    logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. A OS pode não ter sido aberta. Erro: {e}")
+                    sucesso_nota = False
                     
                 logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
                 try:
@@ -360,7 +383,10 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 except:
                     pass
                     
-                logging.info(f"[{inep}] ✅ OS ABERTA COM SUCESSO!")
+                if sucesso_nota:
+                    logging.info(f"[{inep}] ✅ OS ABERTA E NOTA INSERIDA COM SUCESSO!")
+                else:
+                    logging.warning(f"[{inep}] ⚠️ Ciclo finalizado, mas houve erros na nota ou abertura.")
 
                 
                 # Retorna à tela inicial de listagem de chamados para o próximo INEP
