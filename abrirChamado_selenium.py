@@ -228,19 +228,56 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 # ==============================================================================
                 # ATENÇÃO: PREENCHA OS SELETORES XPATH (OU BY.CLASS_NAME / BY.CSS_SELECTOR) ABAIXO
                 # ==============================================================================
+                # ==============================================================================
+                # DEBUG DA ESTRUTURA DA TELA (MAPEAMENTO)
+                logging.info(f"[{inep}] --- [DEBUG ESTRUTURA BUBBLE DA TELA DE OS] ---")
                 
-                # Exemplo 1: Preencher a barra de pesquisa
-                logging.info(f"[{inep}] Procurando barra de pesquisa...")
-                input_pesquisa = driver.find_element(By.XPATH, "//input[@placeholder='Pesquisar' or contains(@placeholder, 'Buscar')]")
-                input_pesquisa.clear()
-                input_pesquisa.send_keys(inep)
-                time.sleep(3)
+                # Mapear inputs
+                inputs_debug = driver.find_elements(By.TAG_NAME, "input")
+                for idx, inp in enumerate(inputs_debug):
+                    try:
+                        tipo = inp.get_attribute("type")
+                        place = inp.get_attribute("placeholder")
+                        logging.info(f"  > Input {idx} | tipo: {tipo} | placeholder: {place}")
+                    except: pass
                 
-                # Exemplo 2: Clicar no botão 'Nova OS'
+                # Mapear textos curtos que parecem botões
+                botoes_debug = driver.find_elements(By.XPATH, "//*[string-length(text()) > 0 and string-length(text()) < 20]")
+                textos_botoes = set()
+                for btn in botoes_debug:
+                    try:
+                        txt = btn.text.strip()
+                        if txt and txt not in textos_botoes:
+                            textos_botoes.add(txt)
+                    except: pass
+                logging.info(f"  > Textos clicáveis detectados na tela: {list(textos_botoes)}")
+                logging.info("------------------------------------------------------")
+                
+                # Tentar preencher a barra de pesquisa pelo primeiro input text da tela (tentativa alternativa)
+                logging.info(f"[{inep}] Tentativa de encontrar barra de pesquisa genérica...")
+                try:
+                    inputs_text = [i for i in inputs_debug if i.get_attribute("type") in ("text", "search", "")]
+                    if inputs_text:
+                        input_pesquisa = inputs_text[0]
+                        input_pesquisa.clear()
+                        input_pesquisa.send_keys(inep)
+                        time.sleep(3)
+                    else:
+                        logging.error(f"[{inep}] Nenhum input de texto encontrado na tela!")
+                        continue
+                except Exception as e:
+                    logging.error(f"[{inep}] Falha ao preencher pesquisa: {e}")
+                    continue
+                
+                # Exemplo 2: Clicar no botão 'Nova OS' (tenta usar o método antigo, mas com try-except pra não explodir)
                 logging.info(f"[{inep}] Clicando em Nova OS...")
-                btn_nova_os = driver.find_element(By.XPATH, "//*[contains(text(), 'Nova OS') or contains(text(), 'Criar OS')]")
-                driver.execute_script("arguments[0].click();", btn_nova_os)
-                time.sleep(3)
+                try:
+                    btn_nova_os = driver.find_element(By.XPATH, "//*[contains(text(), 'Nova OS') or contains(text(), 'Criar OS')]")
+                    driver.execute_script("arguments[0].click();", btn_nova_os)
+                    time.sleep(3)
+                except:
+                    logging.error(f"[{inep}] Não consegui achar o botão de Nova OS com o nome padrão.")
+                    continue
                 
                 # Exemplo 3: Preencher o modal e enviar notas
                 logging.info(f"[{inep}] Preenchendo dados da OS...")
