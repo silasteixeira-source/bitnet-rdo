@@ -346,16 +346,16 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     clicou_aba = False
                     
                     for el in reversed(elementos_nota):
-                        texto_el = (el.text or "").strip().lower()
+                        texto_el = (el.text or el.get_attribute("innerText") or el.get_attribute("textContent") or "").strip().lower()
                         if "técnica" in texto_el or not texto_el:
                             continue
                             
-                        if el.is_displayed():
-                            try:
-                                driver.execute_script("arguments[0].click();", el)
-                                clicou_aba = True
-                                break # Achou o filho mais profundo e clicou
-                            except: pass
+                        # Removida a checagem de is_displayed() pois o Bubble esconde elementos via CSS
+                        try:
+                            driver.execute_script("arguments[0].click();", el)
+                            clicou_aba = True
+                            break # Achou o filho mais profundo e clicou
+                        except: pass
                             
                     if not clicou_aba:
                         logging.warning(f"[{inep}] Não encontrei a aba 'Nota' clicável.")
@@ -365,16 +365,23 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
-                    # Buscar textarea visível
+                    # Tenta agressivamente pelo placeholder (funciona pra input, textarea e editores Rich Text)
                     area_nota = None
-                    textareas = driver.find_elements(By.TAG_NAME, "textarea")
-                    for ta in textareas:
-                        if ta.is_displayed():
-                            area_nota = ta
-                            break
-                            
+                    try:
+                        area_nota = driver.find_element(By.XPATH, "//*[contains(@placeholder, 'aconteceu') or contains(@data-placeholder, 'aconteceu')]")
+                    except:
+                        pass
+                        
                     if not area_nota:
-                        # Fallback
+                        # Fallback textarea
+                        textareas = driver.find_elements(By.TAG_NAME, "textarea")
+                        for ta in textareas:
+                            if ta.is_displayed():
+                                area_nota = ta
+                                break
+                                
+                    if not area_nota:
+                        # Fallback contenteditable
                         divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
                         for div in divs_editaveis:
                             if div.is_displayed():
@@ -401,6 +408,12 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     sucesso_nota = True
                 except Exception as e:
                     logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
+                    # RADAR ATIVADO
+                    try:
+                        with open(f"erro_radar_{inep}.html", "w", encoding="utf-8") as f:
+                            f.write(driver.page_source)
+                        logging.error(f"[{inep}] 📡 MODO RADAR ATIVADO: HTML da tela salvo em 'erro_radar_{inep}.html'")
+                    except: pass
                     sucesso_nota = False
                     
                 logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
