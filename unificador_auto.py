@@ -744,9 +744,10 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
             log(f"Iniciando robô de abertura de chamados (Selenium) para {len(df_falta_abrir)} INEP(s)...")
             try:
                 import subprocess
-                # Executa em segundo plano para não travar o unificador
-                subprocess.Popen(["python", "abrirChamado_selenium.py", snapshot_path])
-                log("Robô Selenium acionado com sucesso em segundo plano.")
+                # Executa de forma síncrona (fila de espera) para não estourar a memória da VPS concorrendo com o Exporter
+                log("Aguardando robô Selenium terminar a fila de chamados...")
+                subprocess.run(["python", "abrirChamado_selenium.py", snapshot_path], check=False)
+                log("Fila de chamados finalizada. Liberando o loop.")
             except Exception as e_pw:
                 log(f"⚠️ Erro ao tentar executar abrirChamado_selenium.py: {e_pw}")
         else:
