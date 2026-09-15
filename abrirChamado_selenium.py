@@ -317,6 +317,10 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 except Exception as e:
                     logging.error(f"[{inep}] Erro ao clicar em Incluir: {e}")
                     continue
+                    
+                if "st1" in cache_path.lower():
+                    logging.info(f"[{inep}] [Modo ST1] OS criada com sucesso (sem preencher nota conforme solicitado).")
+                    continue
                 
                 logging.info(f"[{inep}] 5. Entrando na OS criada...")
                 try:
