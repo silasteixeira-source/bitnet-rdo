@@ -340,20 +340,28 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
                 logging.info(f"[{inep}] 6. Navegando para Notas...")
                 try:
-                    # Encontrar todos os elementos que contêm 'Nota' e clicar no que tem exatamente esse texto (ignorando "Notas técnicas" etc)
-                    elementos_nota = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nota')]")
+                    # Busca ampla por elementos que contenham 'Nota' (evitando 'Notas técnicas')
+                    # Ao inverter a lista, garantimos que clicamos no elemento filho (o texto em si) antes do container pai!
+                    elementos_nota = driver.find_elements(By.XPATH, "//*[contains(text(), 'Nota') or contains(text(), 'Anota')]")
                     clicou_aba = False
-                    for el in elementos_nota:
-                        if el.is_displayed() and el.text.strip() == "Nota":
-                            driver.execute_script("arguments[0].click();", el)
-                            clicou_aba = True
-                            break
+                    
+                    for el in reversed(elementos_nota):
+                        texto_el = (el.text or "").strip().lower()
+                        if "técnica" in texto_el or not texto_el:
+                            continue
+                            
+                        if el.is_displayed():
+                            try:
+                                driver.execute_script("arguments[0].click();", el)
+                                clicou_aba = True
+                                break # Achou o filho mais profundo e clicou
+                            except: pass
                             
                     if not clicou_aba:
-                        logging.warning(f"[{inep}] Não encontrei o botão com texto exato 'Nota'.")
+                        logging.warning(f"[{inep}] Não encontrei a aba 'Nota' clicável.")
                     time.sleep(3)
                 except Exception as e:
-                    logging.warning(f"[{inep}] Erro ao buscar botão 'Nota': {e}")
+                    logging.warning(f"[{inep}] Erro ao buscar aba 'Nota': {e}")
                 
                 logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                 try:
