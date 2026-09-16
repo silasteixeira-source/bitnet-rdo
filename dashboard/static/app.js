@@ -1753,3 +1753,91 @@ window.filterDetailedList = function() {
         `;
     }).join('');
 };
+
+// ==========================================
+// Configurações do Robô
+// ==========================================
+async function loadRobotConfig() {
+    try {
+        const res = await fetch('/api/v1/config', { headers: { 'x-api-key': API_KEY } });
+        if(res.ok) {
+            const config = await res.json();
+            const toggleBitnetOs = document.getElementById('toggle-bitnet-os');
+            const toggleBitnetNota = document.getElementById('toggle-bitnet-nota');
+            const toggleSt1Os = document.getElementById('toggle-st1-os');
+            const toggleSt1Nota = document.getElementById('toggle-st1-nota');
+            
+            if (config.bitnet && toggleBitnetOs && toggleBitnetNota) {
+                toggleBitnetOs.checked = config.bitnet.abrir_os;
+                toggleBitnetNota.checked = config.bitnet.inserir_nota;
+            }
+            if (config.st1 && toggleSt1Os && toggleSt1Nota) {
+                toggleSt1Os.checked = config.st1.abrir_os;
+                toggleSt1Nota.checked = config.st1.inserir_nota;
+            }
+        }
+    } catch (err) {
+        console.error("Erro ao carregar configurações:", err);
+    }
+}
+
+async function saveRobotConfig() {
+    const toggleBitnetOs = document.getElementById('toggle-bitnet-os');
+    const toggleBitnetNota = document.getElementById('toggle-bitnet-nota');
+    const toggleSt1Os = document.getElementById('toggle-st1-os');
+    const toggleSt1Nota = document.getElementById('toggle-st1-nota');
+    const btnSaveSettings = document.getElementById('btn-save-settings');
+    const modalSettings = document.getElementById('modal-settings');
+
+    const newConfig = {
+        bitnet: {
+            abrir_os: toggleBitnetOs ? toggleBitnetOs.checked : true,
+            inserir_nota: toggleBitnetNota ? toggleBitnetNota.checked : true
+        },
+        st1: {
+            abrir_os: toggleSt1Os ? toggleSt1Os.checked : true,
+            inserir_nota: toggleSt1Nota ? toggleSt1Nota.checked : true
+        }
+    };
+    
+    try {
+        if(btnSaveSettings) btnSaveSettings.textContent = 'Salvando...';
+        await fetch('/api/v1/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': API_KEY
+            },
+            body: JSON.stringify({ config: newConfig })
+        });
+        
+        if(btnSaveSettings) btnSaveSettings.textContent = 'Salvo!';
+        setTimeout(() => {
+            if(modalSettings) modalSettings.style.display = 'none';
+            if(btnSaveSettings) btnSaveSettings.textContent = 'Salvar Configurações';
+        }, 1000);
+        
+    } catch (err) {
+        console.error("Erro ao salvar:", err);
+        if(btnSaveSettings) btnSaveSettings.textContent = 'Erro ao Salvar';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnSettings = document.getElementById('btn-settings');
+    const modalSettings = document.getElementById('modal-settings');
+    const btnCloseSettings = document.getElementById('btn-close-settings');
+    const btnCancelSettings = document.getElementById('btn-cancel-settings');
+    const btnSaveSettings = document.getElementById('btn-save-settings');
+
+    if (btnSettings) {
+        btnSettings.addEventListener('click', () => {
+            loadRobotConfig();
+            if(modalSettings) modalSettings.style.display = 'flex';
+        });
+    }
+    if (btnCloseSettings) btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
+    if (btnCancelSettings) btnCancelSettings.addEventListener('click', () => modalSettings.style.display = 'none');
+    if (btnSaveSettings) btnSaveSettings.addEventListener('click', saveRobotConfig);
+});
+
