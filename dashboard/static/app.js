@@ -1754,6 +1754,7 @@ window.filterDetailedList = function() {
     }).join('');
 };
 
+
 // Configurações do Robô
 const btnSettings = document.getElementById('btn-settings');
 const modalSettings = document.getElementById('modal-settings');
@@ -1761,7 +1762,6 @@ const btnCloseSettings = document.getElementById('btn-close-settings');
 const btnCancelSettings = document.getElementById('btn-cancel-settings');
 const btnSaveSettings = document.getElementById('btn-save-settings');
 
-// Elementos dos toggles
 const toggleBitnetOs = document.getElementById('toggle-bitnet-os');
 const toggleBitnetNota = document.getElementById('toggle-bitnet-nota');
 const toggleSt1Os = document.getElementById('toggle-st1-os');
@@ -1770,15 +1770,16 @@ const toggleSt1Nota = document.getElementById('toggle-st1-nota');
 async function loadRobotConfig() {
     try {
         const res = await fetch('/api/v1/config', { headers: { 'x-api-key': API_KEY } });
-        const config = await res.json();
-        
-        if (config.bitnet) {
-            toggleBitnetOs.checked = config.bitnet.abrir_os;
-            toggleBitnetNota.checked = config.bitnet.inserir_nota;
-        }
-        if (config.st1) {
-            toggleSt1Os.checked = config.st1.abrir_os;
-            toggleSt1Nota.checked = config.st1.inserir_nota;
+        if(res.ok) {
+            const config = await res.json();
+            if (config.bitnet) {
+                toggleBitnetOs.checked = config.bitnet.abrir_os;
+                toggleBitnetNota.checked = config.bitnet.inserir_nota;
+            }
+            if (config.st1) {
+                toggleSt1Os.checked = config.st1.abrir_os;
+                toggleSt1Nota.checked = config.st1.inserir_nota;
+            }
         }
     } catch (err) {
         console.error("Erro ao carregar configurações:", err);
