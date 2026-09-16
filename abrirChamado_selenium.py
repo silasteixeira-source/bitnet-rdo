@@ -402,6 +402,13 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                                 area_nota = ta
                                 break
                                 
+                    # Tentativa extra: buscar pelo placeholder exato que aparece na ST1
+                    try:
+                        placeholder_nota = driver.find_element(By.XPATH, "//*[@placeholder='Escreva o que aconteceu...']")
+                        if placeholder_nota.is_displayed():
+                            area_nota = placeholder_nota
+                    except: pass
+                    
                     if not area_nota:
                         # Fallback contenteditable
                         divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
@@ -420,6 +427,17 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     
                     area_nota.clear()
                     area_nota.send_keys(MENSAGEM_NOTA)
+                    time.sleep(1)
+                    
+                    # Força evento input/change no DOM para frameworks reativos (Bubble.io)
+                    try:
+                        driver.execute_script("""
+                            arguments[0].value = arguments[1];
+                            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                        """, area_nota, MENSAGEM_NOTA)
+                    except: pass
+                    
                     time.sleep(2)
                     
                     logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
