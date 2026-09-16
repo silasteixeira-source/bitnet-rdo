@@ -229,6 +229,19 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 
             logging.info(f"Processando INEP: {inep}")
             
+            # --- VERIFICAÇÃO DE TRAVA DE ABERTURA EM TEMPO REAL ---
+            config_path = os.path.join(os.path.dirname(__file__), ".streamlit", "config_robo.json")
+            try:
+                if os.path.exists(config_path):
+                    with open(config_path, "r", encoding="utf-8-sig") as f:
+                        config_tempo_real = json.load(f)
+                    current_tenant = "st1" if "st1" in cache_path.lower() else "bitnet"
+                    permitir_abertura = config_tempo_real.get(current_tenant, {}).get("abrir_os", True)
+                    if not permitir_abertura:
+                        logging.warning(f"[{inep}] 🛑 Abertura bloqueada em tempo real pelas configurações do Dashboard! Pulando INEP.")
+                        continue
+            except: pass
+            
             try:
                 # ==============================================================================
                 # ATENÇÃO: PREENCHA OS SELETORES XPATH (OU BY.CLASS_NAME / BY.CSS_SELECTOR) ABAIXO
