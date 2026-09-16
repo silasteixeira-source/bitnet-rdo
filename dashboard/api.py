@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import math
 import datetime
@@ -172,7 +172,7 @@ def add_history(log: HistoryLog, x_api_key: str = Depends(verify_api_key)):
     # Inserir no topo da lista (mais recente primeiro)
     history.insert(0, new_log)
     
-    # Manter no máximo 500 registros para não pesar
+    # Manter no mÃ¡ximo 500 registros para nÃ£o pesar
     if len(history) > 500:
         history = history[:500]
         
@@ -187,20 +187,32 @@ def get_dashboard_data(tenant: str, x_api_key: str = Depends(verify_api_key)):
         snapshot_path = f"../.streamlit/snapshots/{tenant}.json"
         
     if not os.path.exists(snapshot_path):
-        return {"error": f"Snapshot JSON não encontrado para o tenant '{tenant}'. O pipeline ainda está processando."}
+        return {"error": f"Snapshot JSON nÃ£o encontrado para o tenant '{tenant}'. O pipeline ainda estÃ¡ processando."}
         
     try:
         with open(snapshot_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         data = sanitize_data(data)
         
-        # Injeta o timestamp de modificação do arquivo para o dashboard detectar atrasos
+        # Injeta o timestamp de modificaÃ§Ã£o do arquivo para o dashboard detectar atrasos
         mtime = os.path.getmtime(snapshot_path)
         data['timestamp'] = datetime.datetime.fromtimestamp(mtime).isoformat()
         
         return data
     except Exception as e:
         return {"error": f"Erro ao ler snapshot local: {e}"}
+
+class RobotConfig(BaseModel):
+    config: dict
+
+@app.get("/api/v1/config")
+def get_config(x_api_key: str = Depends(verify_api_key)):
+    return read_json_db("config_robo.json", default={"bitnet": {"abrir_os": True, "inserir_nota": True}, "st1": {"abrir_os": True, "inserir_nota": True}})
+
+@app.post("/api/v1/config")
+def set_config(config_req: RobotConfig, x_api_key: str = Depends(verify_api_key)):
+    write_json_db("config_robo.json", config_req.config)
+    return {"status": "ok"}
 
 @app.get("/")
 def serve_index():
@@ -211,3 +223,4 @@ def serve_index():
 
 # Serve a interface web (app.js, style.css, imagens)
 app.mount("/", StaticFiles(directory="static"), name="static")
+
