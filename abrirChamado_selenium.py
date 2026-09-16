@@ -389,8 +389,7 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 inserir_nota = True
                 try:
                     if os.path.exists(config_path):
-                        import json
-                        with open(config_path, "r", encoding="utf-8") as f:
+                        with open(config_path, "r", encoding="utf-8-sig") as f:
                             config = json.load(f)
                         current_tenant = "st1" if "st1" in cache_path.lower() else "bitnet"
                         inserir_nota = config.get(current_tenant, {}).get("inserir_nota", True)

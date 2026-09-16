@@ -744,8 +744,7 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         permitir_abertura = True
         try:
             if os.path.exists(config_path):
-                import json
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, 'r', encoding='utf-8-sig') as f:
                     config = json.load(f)
                 permitir_abertura = config.get(tenant, {}).get("abrir_os", True)
         except Exception as e:

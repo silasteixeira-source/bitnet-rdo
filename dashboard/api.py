@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import math
 import datetime
@@ -67,7 +67,7 @@ def read_json_db(filename: str, default=None):
     if not os.path.exists(path):
         return default if default is not None else []
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
     except:
         return default if default is not None else []
