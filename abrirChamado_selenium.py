@@ -385,90 +385,105 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                 except Exception as e:
                     logging.warning(f"[{inep}] Erro ao buscar aba 'Nota': {e}")
                 
-                logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
+                config_path = os.path.join(os.path.dirname(__file__), ".streamlit", "config_robo.json")
+                inserir_nota = True
                 try:
-                    # Tenta agressivamente pelo placeholder (funciona pra input, textarea e editores Rich Text)
-                    area_nota = None
+                    if os.path.exists(config_path):
+                        import json
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            config = json.load(f)
+                        current_tenant = "st1" if "st1" in cache_path.lower() else "bitnet"
+                        inserir_nota = config.get(current_tenant, {}).get("inserir_nota", True)
+                except: pass
+
+                if not inserir_nota:
+                    logging.info(f"[{inep}] 7. INSERÇÃO DE NOTA BLOQUEADA pelo Dashboard. Ignorando preenchimento...")
+                    sucesso_nota = True
+                else:
+                    logging.info(f"[{inep}] 7. Preenchendo MENSAGEM_NOTA...")
                     try:
-                        area_nota = driver.find_element(By.XPATH, "//*[contains(@placeholder, 'aconteceu') or contains(@data-placeholder, 'aconteceu')]")
-                    except:
-                        pass
-                        
-                    # Tenta 100% achar pelo placeholder visível primeiro (evita pegar textareas errados como 'Descrição')
-                    elementos_placeholder = driver.find_elements(By.XPATH, "//*[@placeholder='Escreva o que aconteceu...']")
-                    for el in elementos_placeholder:
-                        if el.is_displayed():
-                            area_nota = el
-                            break
+                        # Tenta agressivamente pelo placeholder (funciona pra input, textarea e editores Rich Text)
+                        area_nota = None
+                        try:
+                            area_nota = driver.find_element(By.XPATH, "//*[contains(@placeholder, 'aconteceu') or contains(@data-placeholder, 'aconteceu')]")
+                        except:
+                            pass
                             
-                    # Se não achar por placeholder, tenta achar textareas visíveis normais
-                    if not area_nota:
-                        textareas = driver.find_elements(By.TAG_NAME, "textarea")
-                        for ta in textareas:
-                            if ta.is_displayed():
-                                area_nota = ta
+                        # Tenta 100% achar pelo placeholder visível primeiro (evita pegar textareas errados como 'Descrição')
+                        elementos_placeholder = driver.find_elements(By.XPATH, "//*[@placeholder='Escreva o que aconteceu...']")
+                        for el in elementos_placeholder:
+                            if el.is_displayed():
+                                area_nota = el
                                 break
                                 
-                    # Último caso: divs editáveis
-                    if not area_nota:
-                        divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
-                        for div in divs_editaveis:
-                            if div.is_displayed():
-                                area_nota = div
-                                break
-
-                    if not area_nota:
-                        raise Exception("A área de texto (textarea/input) da nota não foi encontrada ou não está visível.")
-
-                    # 1. Rola a tela para garantir visibilidade
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_nota)
-                    time.sleep(0.5)
-                    
-                    # 2. Foca diretamente via JS (ignora spans ou divs transparentes que bloqueiam o clique)
-                    driver.execute_script("arguments[0].focus();", area_nota)
-                    time.sleep(0.5)
-                    
-                    # 3. Digita usando o Selenium nativo direto no elemento
-                    try: area_nota.clear()
-                    except: pass
-                    try: area_nota.send_keys(MENSAGEM_NOTA)
-                    except: pass
-                    time.sleep(1)
-                    
-                    # 4. Injeta o valor via JS e força os gatilhos do Bubble (input, change, blur)
-                    try:
-                        driver.execute_script("""
-                            arguments[0].value = arguments[1];
-                            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
-                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-                            arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
-                        """, area_nota, MENSAGEM_NOTA)
-                    except: pass
-                    time.sleep(1)
-                    
-                    # 5. Envia um espaço extra só para forçar uma atualização visual de estado no Bubble
-                    try: area_nota.send_keys(" ")
-                    except: pass
-                    time.sleep(2)
-                    
-                    logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
-                    # Usa um seletor mais rigoroso para não clicar no "Adicionar arquivos"
-                    botoes_adicionar = driver.find_elements(By.XPATH, "//*[normalize-space(text())='+ Adicionar' or normalize-space(text())='Adicionar' or @value='Adicionar']")
-                    
-                    if not botoes_adicionar:
-                        botoes_adicionar = driver.find_elements(By.XPATH, "//button[contains(., 'Adicionar') and not(contains(., 'arquivos')) and not(contains(., 'nova OS'))]")
+                        # Se não achar por placeholder, tenta achar textareas visíveis normais
+                        if not area_nota:
+                            textareas = driver.find_elements(By.TAG_NAME, "textarea")
+                            for ta in textareas:
+                                if ta.is_displayed():
+                                    area_nota = ta
+                                    break
+                                    
+                        # Último caso: divs editáveis
+                        if not area_nota:
+                            divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
+                            for div in divs_editaveis:
+                                if div.is_displayed():
+                                    area_nota = div
+                                    break
+    
+                        if not area_nota:
+                            raise Exception("A área de texto (textarea/input) da nota não foi encontrada ou não está visível.")
+    
+                        # 1. Rola a tela para garantir visibilidade
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_nota)
+                        time.sleep(0.5)
                         
-                    for btn in botoes_adicionar:
-                        if btn.is_displayed():
-                            try: btn.click()
-                            except: driver.execute_script("arguments[0].click();", btn)
-                            break
-                    time.sleep(4)
-                    
-                    sucesso_nota = True
-                except Exception as e:
-                    logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
-                    # --- MODO RADAR REATIVADO: SALVANDO NA PASTA TEMP ---
+                        # 2. Foca diretamente via JS (ignora spans ou divs transparentes que bloqueiam o clique)
+                        driver.execute_script("arguments[0].focus();", area_nota)
+                        time.sleep(0.5)
+                        
+                        # 3. Digita usando o Selenium nativo direto no elemento
+                        try: area_nota.clear()
+                        except: pass
+                        try: area_nota.send_keys(MENSAGEM_NOTA)
+                        except: pass
+                        time.sleep(1)
+                        
+                        # 4. Injeta o valor via JS e força os gatilhos do Bubble (input, change, blur)
+                        try:
+                            driver.execute_script("""
+                                arguments[0].value = arguments[1];
+                                arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                                arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
+                            """, area_nota, MENSAGEM_NOTA)
+                        except: pass
+                        time.sleep(1)
+                        
+                        # 5. Envia um espaço extra só para forçar uma atualização visual de estado no Bubble
+                        try: area_nota.send_keys(" ")
+                        except: pass
+                        time.sleep(2)
+                        
+                        logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
+                        # Usa um seletor mais rigoroso para não clicar no "Adicionar arquivos"
+                        botoes_adicionar = driver.find_elements(By.XPATH, "//*[normalize-space(text())='+ Adicionar' or normalize-space(text())='Adicionar' or @value='Adicionar']")
+                        
+                        if not botoes_adicionar:
+                            botoes_adicionar = driver.find_elements(By.XPATH, "//button[contains(., 'Adicionar') and not(contains(., 'arquivos')) and not(contains(., 'nova OS'))]")
+                            
+                        for btn in botoes_adicionar:
+                            if btn.is_displayed():
+                                try: btn.click()
+                                except: driver.execute_script("arguments[0].click();", btn)
+                                break
+                        time.sleep(4)
+                        
+                        sucesso_nota = True
+                    except Exception as e:
+                        logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
+                        # --- MODO RADAR REATIVADO: SALVANDO NA PASTA TEMP ---
                     try:
                         os.makedirs("/app/temp", exist_ok=True)
                         with open(f"/app/temp/erro_radar_{inep}.html", "w", encoding="utf-8") as f:

@@ -1,0 +1,10 @@
+﻿{
+  "bitnet": {
+    "abrir_os": true,
+    "inserir_nota": true
+  },
+  "st1": {
+    "abrir_os": true,
+    "inserir_nota": true
+  }
+}

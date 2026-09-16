@@ -740,7 +740,20 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
     if not df_falta_abrir.empty:
         agora = datetime.now(FUSO_BR)
         # Verifica horário (Segunda a Sexta = 0 a 4; 08:00 às 15:59 = hour entre 8 e 15)
-        if agora.weekday() < 5 and 8 <= agora.hour < 16:
+        config_path = os.path.join(os.path.dirname(__file__), '.streamlit', 'config_robo.json')
+        permitir_abertura = True
+        try:
+            if os.path.exists(config_path):
+                import json
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                permitir_abertura = config.get(tenant, {}).get("abrir_os", True)
+        except Exception as e:
+            log(f"Erro ao ler config_robo.json: {e}")
+
+        if not permitir_abertura:
+            log(f"[{tenant.upper()}] ABERTURA DE OS BLOQUEADA pelas configurações do Dashboard. Pulando...")
+        elif agora.weekday() < 5 and 8 <= agora.hour < 16:
             log(f"Iniciando robô de abertura de chamados (Selenium) para {len(df_falta_abrir)} INEP(s) do tenant {tenant}...")
             try:
                 import subprocess
