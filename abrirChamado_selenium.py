@@ -420,34 +420,35 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     if not area_nota:
                         raise Exception("A área de texto (textarea/input) da nota não foi encontrada ou não está visível.")
 
-                    from selenium.webdriver.common.action_chains import ActionChains
+                    # 1. Rola a tela para garantir visibilidade
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_nota)
+                    time.sleep(0.5)
                     
+                    # 2. Foca diretamente via JS (ignora spans ou divs transparentes que bloqueiam o clique)
+                    driver.execute_script("arguments[0].focus();", area_nota)
+                    time.sleep(0.5)
+                    
+                    # 3. Digita usando o Selenium nativo direto no elemento
+                    try: area_nota.clear()
+                    except: pass
+                    try: area_nota.send_keys(MENSAGEM_NOTA)
+                    except: pass
+                    time.sleep(1)
+                    
+                    # 4. Injeta o valor via JS e força os gatilhos do Bubble (input, change, blur)
                     try:
-                        # 1. Rola a tela para garantir visibilidade
-                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_nota)
-                        time.sleep(1)
-                        
-                        # 2. Clica com o mouse real para ganhar foco
-                        ActionChains(driver).move_to_element(area_nota).click().perform()
-                        time.sleep(1)
-                        
-                        try: area_nota.clear()
-                        except: pass
-                        
-                        # 3. Digita simulando o teclado real do sistema
-                        ActionChains(driver).send_keys(MENSAGEM_NOTA).perform()
-                        time.sleep(2)
-                    except Exception as e_ac:
-                        logging.warning(f"[{inep}] Aviso ao usar teclado real: {e_ac}. Tentando via JS...")
-                        try:
-                            driver.execute_script("""
-                                arguments[0].focus();
-                                arguments[0].value = arguments[1];
-                                arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
-                                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-                            """, area_nota, MENSAGEM_NOTA)
-                        except: pass
+                        driver.execute_script("""
+                            arguments[0].value = arguments[1];
+                            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                            arguments[0].dispatchEvent(new Event('blur', { bubbles: true }));
+                        """, area_nota, MENSAGEM_NOTA)
+                    except: pass
+                    time.sleep(1)
                     
+                    # 5. Envia um espaço extra só para forçar uma atualização visual de estado no Bubble
+                    try: area_nota.send_keys(" ")
+                    except: pass
                     time.sleep(2)
                     
                     logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
@@ -459,7 +460,8 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                         
                     for btn in botoes_adicionar:
                         if btn.is_displayed():
-                            driver.execute_script("arguments[0].click();", btn)
+                            try: btn.click()
+                            except: driver.execute_script("arguments[0].click();", btn)
                             break
                     time.sleep(4)
                     
