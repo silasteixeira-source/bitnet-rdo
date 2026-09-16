@@ -14,7 +14,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # --- CONFIGURAÇÕES GERAIS ---
-MENSAGEM_NOTA = "Coletando informações com um dos responsáveis"
+MENSAGEM_NOTA = """Informo que já entramos em contato com o responsável pela escola. No momento, estamos aguardando o retorno dele para que possamos entender o que ocorreu na unidade.
+
+Assim que tivermos novas informações, farei as devidas atualizações por aqui."""
 
 LOGIN_URL = "https://eace.org.br/login"
 
@@ -327,10 +329,6 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     logging.error(f"[{inep}] Erro ao clicar em Incluir: {e}")
                     continue
                     
-                if "st1" in cache_path.lower():
-                    logging.info(f"[{inep}] [Modo ST1] OS criada com sucesso (sem preencher nota conforme solicitado).")
-                    continue
-                
                 logging.info(f"[{inep}] 5. Entrando na OS criada...")
                 try:
                     # Como filtramos pelo INEP no passo 1, o card da nova OS vai ser um dos primeiros/únicos na tela
