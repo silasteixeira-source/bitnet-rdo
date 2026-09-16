@@ -1822,18 +1822,135 @@ async function saveRobotConfig() {
 }
 
 if (btnSettings) {
-    btnSettings.addEventListener('click', () => {
-        loadRobotConfig();
-        modalSettings.style.display = 'flex';
+        els.listAgents.innerHTML = '<div style="padding:8px; color:var(--text-sec); text-align:center;">Nenhum agente cadastrado.</div>';
+        return;
+    }
+    
+    state.agents.forEach(agent => {
+        const div = document.createElement('div');
+        div.className = 'agent-item';
+        div.innerHTML = `
+            <span>${agent.name}</span>
+            <button class="agent-delete-btn" data-id="${agent.id}">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        `;
+        const btnDelete = div.querySelector('.agent-delete-btn');
+        btnDelete.addEventListener('click', async () => {
+            try {
+                const res = await fetch(`/api/v1/agents/${agent.id}`, {
+                    method: 'DELETE',
+                    headers: { 'x-api-key': window.NOC_API_KEY }
+                });
+                if(res.ok) await fetchAgents();
+            } catch(e) { console.error("Erro ao deletar agente", e); }
+        });
+        els.listAgents.appendChild(div);
     });
 }
-if (btnCloseSettings) btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
-if (btnCancelSettings) btnCancelSettings.addEventListener('click', () => modalSettings.style.display = 'none');
-if (btnSaveSettings) btnSaveSettings.addEventListener('click', saveRobotConfig);
 
-// ==========================================
+// Run
+document.addEventListener('DOMContentLoaded', init);
+
+// --- Detalhamento de Registros ---
+let detailedListData = { tudo: [], online: [], offline: [], ignorados: [] };
+window.currentDetailedListType = 'tudo';
+
+function updateDetailedListsData(data) {
+    detailedListData.online = (data.list_online || []).map(i => ({...i, _category: 'ONLINE'}));
+    detailedListData.offline = (data.list_offline || []).map(i => ({...i, _category: 'OFFLINE'}));
+    detailedListData.ignorados = (data.list_ignorados || []).map(i => ({...i, _category: 'IGNORADO'}));
+    detailedListData.tudo = [...detailedListData.online, ...detailedListData.offline, ...detailedListData.ignorados];
+    
+    const ct = document.getElementById('count-list-tudo');
+    if(ct) ct.textContent = detailedListData.tudo.length;
+    const co = document.getElementById('count-list-online');
+    if(co) co.textContent = detailedListData.online.length;
+    const cf = document.getElementById('count-list-offline');
+    if(cf) cf.textContent = detailedListData.offline.length;
+    const ci = document.getElementById('count-list-ignorados');
+    if(ci) ci.textContent = detailedListData.ignorados.length;
+    
+    if (state.currentView === 'view-omada') {
+        renderDetailedList(currentDetailedListType);
+    }
+}
+
+window.renderDetailedList = function(type) {
+    currentDetailedListType = type;
+    
+    // Update button styles
+    const btns = ['tudo', 'online', 'offline', 'ignorados'];
+    btns.forEach(b => {
+        const btn = document.getElementById('btn-list-' + b);
+        if(btn) {
+            if(b === type) {
+                btn.style.opacity = '1';
+                btn.style.boxShadow = '0 0 10px rgba(255,255,255,0.2)';
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.boxShadow = 'none';
+            }
+        }
+    });
+    
+    filterDetailedList();
+};
+
+window.filterDetailedList = function() {
+    const searchInput = document.getElementById('detailed-search-input');
+    const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    
+    // Se estiver pesquisando, busca em toda a base de dados (tudo)
+    // Se o campo estiver vazio, mostra apenas a lista da aba atual
+    const list = (search !== '') ? (detailedListData['tudo'] || []) : (detailedListData[currentDetailedListType] || []);
+    
+    const filtered = list.filter(item => {
+        const inep = String(item.INEP_Extraido || item.INEP || '').toLowerCase();
+        const nome = String(item.NAME || item.NOME || item.Nome || item.Escola || '').toLowerCase();
+        return inep.includes(search) || nome.includes(search);
+    });
+    
+    const tbody = document.getElementById('detailed-list-body');
+    if (!tbody) return;
+    
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:24px;">Nenhum registro encontrado.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = filtered.map(item => {
+        const inep = item.INEP_Extraido || item.INEP || '-';
+        const nome = item.NAME || item.NOME || item.Nome || item.Escola || 'Sem nome';
+        
+        let status = item.STATUS || item.Estatuto || item.ESTATUTO || item._category || '-';
+        let badgeStyle = '';
+        
+        if (status.toUpperCase().includes('OFFLINE')) {
+            badgeStyle = 'background: var(--status-critical)20; color: var(--status-critical)';
+        } else if (status.toUpperCase().includes('ONLINE')) {
+            badgeStyle = 'background: var(--status-ok)20; color: var(--status-ok)';
+        } else {
+            badgeStyle = 'background: var(--border-strong); color: white';
+        }
+        
+        const isIgnorado = item._category === 'IGNORADO';
+        
+        return `
+            <tr class="table-row">
+                <td style="font-family: monospace; color: var(--text-sec);">
+                    ${inep}
+                    ${isIgnorado ? '<br><span style="font-size:10px; color:var(--text-sec);">⚠️ Não RDO</span>' : ''}
+                </td>
+                <td style="font-weight: 500;">${nome}</td>
+                <td><span class="badge" style="${badgeStyle}">${status}</span></td>
+            </tr>
+        `;
+    }).join('');
+};
+
+
 // Configurações do Robô
-// ==========================================
 const btnSettings = document.getElementById('btn-settings');
 const modalSettings = document.getElementById('modal-settings');
 const btnCloseSettings = document.getElementById('btn-close-settings');
@@ -1851,12 +1968,12 @@ async function loadRobotConfig() {
         if(res.ok) {
             const config = await res.json();
             if (config.bitnet) {
-                toggleBitnetOs.checked = config.bitnet.abrir_os !== false;
-                toggleBitnetNota.checked = config.bitnet.inserir_nota !== false;
+                toggleBitnetOs.checked = config.bitnet.abrir_os;
+                toggleBitnetNota.checked = config.bitnet.inserir_nota;
             }
             if (config.st1) {
-                toggleSt1Os.checked = config.st1.abrir_os !== false;
-                toggleSt1Nota.checked = config.st1.inserir_nota !== false;
+                toggleSt1Os.checked = config.st1.abrir_os;
+                toggleSt1Nota.checked = config.st1.inserir_nota;
             }
         }
     } catch (err) {
@@ -1908,4 +2025,3 @@ if (btnSettings) {
 if (btnCloseSettings) btnCloseSettings.addEventListener('click', () => modalSettings.style.display = 'none');
 if (btnCancelSettings) btnCancelSettings.addEventListener('click', () => modalSettings.style.display = 'none');
 if (btnSaveSettings) btnSaveSettings.addEventListener('click', saveRobotConfig);
-
