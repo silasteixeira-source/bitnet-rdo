@@ -423,7 +423,12 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     time.sleep(2)
                     
                     logging.info(f"[{inep}] 8. Clicando em Salvar/Adicionar Nota...")
-                    botoes_adicionar = driver.find_elements(By.XPATH, "//*[contains(text(), 'Adicionar')]")
+                    # Usa um seletor mais rigoroso para não clicar no "Adicionar arquivos"
+                    botoes_adicionar = driver.find_elements(By.XPATH, "//*[normalize-space(text())='+ Adicionar' or normalize-space(text())='Adicionar' or @value='Adicionar']")
+                    
+                    if not botoes_adicionar:
+                        botoes_adicionar = driver.find_elements(By.XPATH, "//button[contains(., 'Adicionar') and not(contains(., 'arquivos')) and not(contains(., 'nova OS'))]")
+                        
                     for btn in botoes_adicionar:
                         if btn.is_displayed():
                             driver.execute_script("arguments[0].click();", btn)
