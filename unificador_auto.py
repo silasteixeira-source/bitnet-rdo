@@ -737,11 +737,11 @@ def processar_fluxo(omada_old_path, omada_new_path, os_path, rdo_path, sync_goog
         log(f"❌ Erro ao salvar snapshot JSON: {e}")
 
     # NOVO: Acionar robô de abertura de OS (Selenium) se houver demanda
-    if tenant == "bitnet" and not df_falta_abrir.empty:
+    if not df_falta_abrir.empty:
         agora = datetime.now(FUSO_BR)
         # Verifica horário (Segunda a Sexta = 0 a 4; 08:00 às 15:59 = hour entre 8 e 15)
         if agora.weekday() < 5 and 8 <= agora.hour < 16:
-            log(f"Iniciando robô de abertura de chamados (Selenium) para {len(df_falta_abrir)} INEP(s)...")
+            log(f"Iniciando robô de abertura de chamados (Selenium) para {len(df_falta_abrir)} INEP(s) do tenant {tenant}...")
             try:
                 import subprocess
                 # Executa em segundo plano (paralelo) para que o Unificador possa seguir para a ST1 imediatamente
