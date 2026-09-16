@@ -483,13 +483,13 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     except Exception as e:
                         logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
                         # --- MODO RADAR REATIVADO: SALVANDO NA PASTA TEMP ---
-                    try:
-                        os.makedirs("/app/temp", exist_ok=True)
-                        with open(f"/app/temp/erro_radar_{inep}.html", "w", encoding="utf-8") as f:
-                            f.write(driver.page_source)
-                        logging.error(f"[{inep}] 📡 MODO RADAR ATIVADO: HTML da tela salvo em '/app/temp/erro_radar_{inep}.html'")
-                    except: pass
-                    sucesso_nota = False
+                        try:
+                            os.makedirs("/app/temp", exist_ok=True)
+                            with open(f"/app/temp/erro_radar_{inep}.html", "w", encoding="utf-8") as f:
+                                f.write(driver.page_source)
+                            logging.error(f"[{inep}] 📡 MODO RADAR ATIVADO: HTML da tela salvo em '/app/temp/erro_radar_{inep}.html'")
+                        except: pass
+                        sucesso_nota = False
                     
                 logging.info(f"[{inep}] 9. Fechando/Voltando da OS...")
                 try:
