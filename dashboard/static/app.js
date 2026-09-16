@@ -1759,7 +1759,7 @@ window.filterDetailedList = function() {
 // ==========================================
 async function loadRobotConfig() {
     try {
-        const res = await fetch('/api/v1/config', { headers: { 'x-api-key': API_KEY } });
+        const res = await fetch('/api/v1/config', { headers: { 'x-api-key': window.NOC_API_KEY } });
         if(res.ok) {
             const config = await res.json();
             const toggleBitnetOs = document.getElementById('toggle-bitnet-os');
@@ -1806,7 +1806,7 @@ async function saveRobotConfig() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': API_KEY
+                'x-api-key': window.NOC_API_KEY
             },
             body: JSON.stringify({ config: newConfig })
         });
