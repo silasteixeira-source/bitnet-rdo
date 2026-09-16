@@ -420,23 +420,33 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     if not area_nota:
                         raise Exception("A área de texto (textarea/input) da nota não foi encontrada ou não está visível.")
 
-                    driver.execute_script("arguments[0].focus();", area_nota)
-                    time.sleep(0.5)
-                    try: area_nota.click()
-                    except: driver.execute_script("arguments[0].click();", area_nota)
+                    from selenium.webdriver.common.action_chains import ActionChains
                     
-                    area_nota.clear()
-                    area_nota.send_keys(MENSAGEM_NOTA)
-                    time.sleep(1)
-                    
-                    # Força evento input/change no DOM para frameworks reativos (Bubble.io)
                     try:
-                        driver.execute_script("""
-                            arguments[0].value = arguments[1];
-                            arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
-                            arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
-                        """, area_nota, MENSAGEM_NOTA)
-                    except: pass
+                        # 1. Rola a tela para garantir visibilidade
+                        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", area_nota)
+                        time.sleep(1)
+                        
+                        # 2. Clica com o mouse real para ganhar foco
+                        ActionChains(driver).move_to_element(area_nota).click().perform()
+                        time.sleep(1)
+                        
+                        try: area_nota.clear()
+                        except: pass
+                        
+                        # 3. Digita simulando o teclado real do sistema
+                        ActionChains(driver).send_keys(MENSAGEM_NOTA).perform()
+                        time.sleep(2)
+                    except Exception as e_ac:
+                        logging.warning(f"[{inep}] Aviso ao usar teclado real: {e_ac}. Tentando via JS...")
+                        try:
+                            driver.execute_script("""
+                                arguments[0].focus();
+                                arguments[0].value = arguments[1];
+                                arguments[0].dispatchEvent(new Event('input', { bubbles: true }));
+                                arguments[0].dispatchEvent(new Event('change', { bubbles: true }));
+                            """, area_nota, MENSAGEM_NOTA)
+                        except: pass
                     
                     time.sleep(2)
                     
