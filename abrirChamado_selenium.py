@@ -394,23 +394,23 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     except:
                         pass
                         
+                    # Tenta 100% achar pelo placeholder visível primeiro (evita pegar textareas errados como 'Descrição')
+                    elementos_placeholder = driver.find_elements(By.XPATH, "//*[@placeholder='Escreva o que aconteceu...']")
+                    for el in elementos_placeholder:
+                        if el.is_displayed():
+                            area_nota = el
+                            break
+                            
+                    # Se não achar por placeholder, tenta achar textareas visíveis normais
                     if not area_nota:
-                        # Fallback textarea
                         textareas = driver.find_elements(By.TAG_NAME, "textarea")
                         for ta in textareas:
                             if ta.is_displayed():
                                 area_nota = ta
                                 break
                                 
-                    # Tentativa extra: buscar pelo placeholder exato que aparece na ST1
-                    try:
-                        placeholder_nota = driver.find_element(By.XPATH, "//*[@placeholder='Escreva o que aconteceu...']")
-                        if placeholder_nota.is_displayed():
-                            area_nota = placeholder_nota
-                    except: pass
-                    
+                    # Último caso: divs editáveis
                     if not area_nota:
-                        # Fallback contenteditable
                         divs_editaveis = driver.find_elements(By.XPATH, "//div[@contenteditable='true']")
                         for div in divs_editaveis:
                             if div.is_displayed():
