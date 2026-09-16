@@ -341,7 +341,11 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                             break
                             
                     if card_alvo:
-                        driver.execute_script("arguments[0].click();", card_alvo)
+                        try:
+                            btn_olho = driver.find_element(By.XPATH, f"//*[contains(text(), '{inep}')]/ancestor::div[contains(@class, 'bubble-element Group')]//button[.//text()[contains(., 'remove_red_eye')]]")
+                            driver.execute_script("arguments[0].click();", btn_olho)
+                        except:
+                            driver.execute_script("arguments[0].click();", card_alvo)
                         time.sleep(5) # Esperar OS abrir
                     else:
                         raise Exception("Card da OS não apareceu na tela principal!")
