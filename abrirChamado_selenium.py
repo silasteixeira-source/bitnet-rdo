@@ -451,6 +451,9 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                     logging.info(f"[{inep}] ✅ OS ABERTA E NOTA INSERIDA COM SUCESSO!")
                 else:
                     logging.warning(f"[{inep}] ⚠️ Ciclo finalizado, mas houve erros na nota ou abertura.")
+                    if "st1" in cache_path.lower():
+                        logging.error(f"[{inep}] 🛑 Parando a execução para a ST1 (modo de acompanhamento passo a passo ativado por erro na nota).")
+                        break
 
                 
                 # Retorna à tela inicial de listagem de chamados para o próximo INEP
