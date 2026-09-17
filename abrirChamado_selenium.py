@@ -494,7 +494,7 @@ def processar_chamados(cache_path="/app/.streamlit/snapshots/bitnet.json"):
                         
                         sucesso_nota = True
                     except Exception as e:
-                        logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}")
+                        logging.error(f"[{inep}] ❌ Falha: Não encontrei a área de Notas ou botão Salvar. Erro: {e}", exc_info=True)
                         # --- MODO RADAR REATIVADO: SALVANDO NA PASTA TEMP ---
                         try:
                             os.makedirs("/app/temp", exist_ok=True)
